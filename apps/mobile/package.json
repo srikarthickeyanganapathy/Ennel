@@ -59,6 +59,10 @@
     "preset": "jest-expo",
     "testMatch": [
       "<rootDir>/src/**/*.spec.{ts,tsx}"
-    ]
+    ],
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest-setup.ts"
+    ],
+    "clearMocks": true
   }
 }

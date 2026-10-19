@@ -1,21 +1,28 @@
-import { render, screen } from '@testing-library/react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { screen } from '@testing-library/react-native';
+import { useSessionStore } from '@/shared/store/session.store';
+import { mockRouter, renderWithProviders } from '@/test-utils/render';
 import { SplashScreen } from './SplashScreen';
 
-describe('SplashScreen', () => {
-  it('shows the brand, tagline and a labelled start button', async () => {
-    await render(
-      <SafeAreaProvider
-        initialMetrics={{
-          frame: { x: 0, y: 0, width: 390, height: 844 },
-          insets: { top: 0, left: 0, right: 0, bottom: 0 },
-        }}
-      >
-        <SplashScreen />
-      </SafeAreaProvider>,
-    );
+jest.mock('@/shared/api-client/api-client', () => ({
+  refreshSessionOnce: jest.fn(async () => false),
+}));
+
+describe('SplashScreen (Spec §3 Screen 1)', () => {
+  it('shows a loading state while the session is checked', async () => {
+    useSessionStore.setState({ status: 'restoring' });
+    await renderWithProviders(<SplashScreen />);
     expect(screen.getByRole('header', { name: 'ENNEL' })).toBeTruthy();
     expect(screen.getByText('Good Food. Better You.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Get Started' })).toBeDisabled();
+    expect(await screen.findByRole('button', { name: 'Get Started' })).toBeTruthy();
+  });
+
+  it('sends a signed-in student who has not finished setup to the profile step', async () => {
+    useSessionStore.setState({
+      status: 'signedIn',
+      isOnboardingComplete: false,
+      accessToken: 'token',
+    });
+    await renderWithProviders(<SplashScreen />);
+    expect(mockRouter.replace).toHaveBeenCalledWith('/(onboarding)/profile');
   });
 });
