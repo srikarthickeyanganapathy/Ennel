@@ -1,0 +1,39 @@
+{
+  "name": "ennel",
+  "private": true,
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=20.19"
+  },
+  "scripts": {
+    "build:shared": "pnpm --filter @ennel/shared build",
+    "dev:shared": "pnpm --filter @ennel/shared dev",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm build:shared && pnpm -r --parallel typecheck",
+    "test": "pnpm build:shared && pnpm -r test",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "prepare": "husky",
+    "dev:api": "pnpm --filter @ennel/api dev",
+    "dev:admin": "pnpm --filter @ennel/admin dev",
+    "dev:mobile": "pnpm --filter @ennel/mobile start",
+    "db:migrate": "pnpm --filter @ennel/api prisma:migrate",
+    "db:seed": "pnpm --filter @ennel/api seed"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21",
+    "@commitlint/config-conventional": "^21",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^22",
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7",
+    "globals": "^17",
+    "husky": "^9",
+    "lint-staged": "^17",
+    "prettier": "^3.9",
+    "typescript": "~6.0",
+    "typescript-eslint": "^8.71"
+  }
+}
