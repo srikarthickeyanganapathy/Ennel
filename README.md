@@ -28,6 +28,10 @@ pnpm db:migrate             # apply Prisma migrations
 pnpm db:seed                # roles, permissions, meals/slots, policy, dev roster, first Super Admin
 ```
 
+For the student app on a phone, copy `apps/mobile/.env.example` to `apps/mobile/.env` and set `EXPO_PUBLIC_API_URL` to your computer's LAN address (for example `http://192.168.1.20:3000`); `localhost` on a phone is the phone itself.
+
+API tests include integration tests against `TEST_DATABASE_URL`, so `pnpm db:up` must be running before `pnpm test`.
+
 The seed creates the first Super Admin from `SEED_SUPER_ADMIN_*` in `.env`. That account must change its password on first login.
 
 ## Daily commands

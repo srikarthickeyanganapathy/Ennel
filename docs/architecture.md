@@ -67,6 +67,10 @@ Dependencies point inward only. Admin modules reuse student domain functions (fo
 - **Idempotency:** `Idempotency-Key` header on booking, cancellation, leave and complaint POSTs; `idempotency_keys` stores the response in the same transaction (ADR-0016).
 - **Time:** business time Asia/Kolkata; instants stored UTC; business dates as `DATE`; slot times as minutes since IST midnight (ADR-0002).
 - **Policy:** `mess_policy` singleton with `version`; services load it once per use case and pass it to domain functions (ADR-0005..0013).
+- **Rate limiting:** `@RateLimit({ name, limit, windowSeconds })` + `RateLimitGuard`, backed by a Redis fixed-window counter (`RedisRateLimiter`, fails open). Tests swap in `InMemoryRateLimiter`.
+- **Files:** `FileStorageProvider` (local disk under `STORAGE_DIR`) stores uploads under server-generated keys. `FileUrlSigner` issues HMAC-signed URLs (`FILE_SIGNING_SECRET`, 15-minute expiry) served by `GET /api/v1/files/*`. Upload types are detected from content (`detectImageType`).
+- **Student auth:** `StudentJwtAuthGuard` verifies student access tokens and sets `@CurrentStudent()`. Refresh tokens are random 256-bit values stored as SHA-256 hashes; rotation marks the old session replaced in the same transaction as the new one, so a concurrent reuse is detected.
+- **Cross-module calls:** modules expose application services (e.g. `ListMealsService`, `GetMessPolicyService`, `SaveMealPreferencesService`). A service that takes part in another module's transaction accepts the `TransactionClient` as a parameter.
 
 ### 3.5 Booking model (ADR-0003)
 
@@ -87,7 +91,7 @@ Staff-facing (under `modules/admin/`): `admin-auth`, `staff-users`, `rbac`, `aud
 
 ### 4.1 Mobile (`apps/mobile`)
 
-Expo Router routes in `app/` are thin and render screens from `src/features/<feature>/`. Each feature has `components/ hooks/ api/ types/ utils/ constants/`. Server state uses TanStack Query; Zustand holds session and UI state only; tokens live in SecureStore. The client holds no business rules: the API returns deadlines (`cancellationDeadlineAt`, `changeSlotDeadlineAt`) plus `canCancel` / `canChangeSlot` and a `disabledReason`, and the app renders them.
+Expo Router routes in `app/` are thin and render screens from `src/features/<feature>/`. Route groups: `(auth)` (Screens 2–4 and Login), `(onboarding)` (Screens 5–8, needs a session), `(tabs)` (needs completed onboarding). `apiRequest` adds the access token, refreshes once on 401 (single-flight, because refresh tokens are single-use) and maps errors to `ApiError`. Forms use React Hook Form with the shared Zod schemas. `useSubmitLock` blocks double submits synchronously. The onboarding draft lives in a Zustand store so Back/Edit never loses entries. Each feature has `components/ hooks/ api/ types/ utils/ constants/`. Server state uses TanStack Query; Zustand holds session and UI state only; tokens live in SecureStore. The client holds no business rules: the API returns deadlines (`cancellationDeadlineAt`, `changeSlotDeadlineAt`) plus `canCancel` / `canChangeSlot` and a `disabledReason`, and the app renders them.
 
 ### 4.2 Admin (`apps/admin`)
 

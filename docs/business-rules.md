@@ -127,6 +127,20 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-AUTH-6** Credential reset (no email/SMS assumed): staff issue a one-time code, shown once and valid 24 h, which the student enters with their reference number to set a new password. (ADR-0019)
 - **BR-AUTH-7** College-controlled profile fields (_policy_ `collegeControlledFields`, default reference number, full name, department, academic year) are read-only for students. Hostel/block, room, phones, email and photo are editable. (ADR-0018)
 
+- **BR-AUTH-8** Login, registration, roster check and refresh are rate-limited per client IP (10, 10, 20 and 30 requests per minute). If Redis is unavailable the limiter allows the request, and account lockout (BR-AUTH-3) still applies.
+- **BR-AUTH-9** Login errors never reveal whether an account exists: unknown numbers and wrong passwords return the same message, with similar response times.
+- **BR-AUTH-10** A locked or deactivated student cannot log in or refresh; refreshing such an account revokes its sessions.
+
+## BR-ONB: First-time setup (Spec §3 Screens 5–8)
+
+- **BR-ONB-1** Registration copies name, department, academic year, hostel block, room and email from the roster entry (Screen 5 prefill).
+- **BR-ONB-2** Required at Screen 8: hostel block (an active one), room number, student phone and parent phone. Email and photo are optional. Phone numbers are stored as 7–15 digits with an optional leading `+`.
+- **BR-ONB-3** "Save & Continue" saves profile changes, all three meal preferences and the overall Default Booking switch in one transaction, then marks onboarding complete. College-controlled values in the request are ignored (BR-AUTH-7).
+- **BR-ONB-4** An enabled Lunch or Dinner preference needs an active slot of that meal. Breakfast's single window is filled in automatically, also while Breakfast is off, so switching it on later needs no slot choice.
+- **BR-ONB-5** Every meal starts OFF in the setup screen. Nothing is booked until the student switches a meal on.
+- **BR-ONB-6** Future bookings are generated from these preferences by the booking engine (Phase 4/5). Saving onboarding does not create bookings yet.
+- **BR-ONB-7** Profile photos: JPEG, PNG, WebP or HEIC detected from file content, ≤5 MB, served only through signed URLs that expire after 15 minutes.
+
 ## BR-IDEM: Idempotency (Rule 13)
 
 - **BR-IDEM-1** Booking, cancellation, leave and complaint submissions accept an `Idempotency-Key`. A replay within 24 h returns the original response. A replay with a different payload returns `IDEMPOTENCY_KEY_REUSED`. (ADR-0016)
