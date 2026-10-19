@@ -15,6 +15,7 @@ const HTTP_STATUS_CODES: Readonly<Record<number, ErrorCode>> = {
   401: ErrorCode.UNAUTHENTICATED,
   403: ErrorCode.PERMISSION_DENIED,
   404: ErrorCode.NOT_FOUND,
+  413: ErrorCode.FILE_INVALID,
   429: ErrorCode.RATE_LIMITED,
 };
 

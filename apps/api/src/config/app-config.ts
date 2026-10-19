@@ -15,7 +15,9 @@ export interface AppConfig {
     accessTtlSeconds: number;
     refreshTtlDays: number;
   };
+  /** Absolute path; relative values resolve against apps/api. */
   storageDir: string;
+  fileSigningSecret: string;
   adminWebOrigin: string;
 }
 
@@ -44,7 +46,8 @@ export function parseAppConfig(source: NodeJS.ProcessEnv): AppConfig {
       accessTtlSeconds: env.JWT_ACCESS_TTL_SECONDS,
       refreshTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
     },
-    storageDir: env.STORAGE_DIR,
+    storageDir: resolve(__dirname, '../..', env.STORAGE_DIR),
+    fileSigningSecret: env.FILE_SIGNING_SECRET,
     adminWebOrigin: env.ADMIN_WEB_ORIGIN,
   };
 }

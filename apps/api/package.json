@@ -7,11 +7,13 @@
     "build": "nest build",
     "start": "node dist/main.js",
     "typecheck": "prisma generate --no-hints && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json",
-    "test": "prisma generate --no-hints && vitest run",
+    "test": "pnpm test:unit && vitest run -c vitest.integration.config.mts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:validate": "prisma validate",
-    "seed": "prisma db seed"
+    "seed": "prisma db seed",
+    "test:unit": "prisma generate --no-hints && vitest run",
+    "test:integration": "prisma generate --no-hints && vitest run -c vitest.integration.config.mts"
   },
   "dependencies": {
     "@ennel/shared": "workspace:*",
@@ -23,6 +25,7 @@
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "argon2": "^0.45",
+    "ioredis": "^5.11",
     "reflect-metadata": "^0.2",
     "rxjs": "^7.8",
     "zod": "^4.6"
@@ -33,6 +36,7 @@
     "@nestjs/testing": "^11.2",
     "@swc/core": "^1",
     "@types/express": "^5",
+    "@types/multer": "^2",
     "@types/supertest": "^6",
     "prisma": "7.10.1",
     "supertest": "^7",

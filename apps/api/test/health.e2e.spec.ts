@@ -15,6 +15,7 @@ const TEST_CONFIG = parseAppConfig({
   REDIS_URL: 'redis://localhost:6379',
   JWT_STUDENT_SECRET: 's'.repeat(32),
   JWT_STAFF_SECRET: 't'.repeat(32),
+  FILE_SIGNING_SECRET: 'f'.repeat(32),
 });
 
 describe('GET /api/v1/health', () => {
