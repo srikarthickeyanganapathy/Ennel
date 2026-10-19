@@ -1,0 +1,141 @@
+# ENNEL Business Rules
+
+Single source of truth for rule behaviour. Each rule has a stable ID (`BR-…`) that domain code and tests cite next to the spec reference. Values marked _policy_ come from `mess_policy` and are editable by staff with `policy:update`. The value shown is the current default, see the linked ADR.
+
+Status: Phase 0 defaults approved 2026-10-19. The institution still has to confirm the items in Spec §18; see `docs/admin-requirements.md` §Open items.
+
+## BR-TIME: Time
+
+- **BR-TIME-1** Business time zone is **Asia/Kolkata**. "Today", weekdays, meal dates and deadlines are evaluated in IST. (ADR-0002)
+- **BR-TIME-2** Instants are stored in UTC. Business dates are stored as calendar `DATE`. Slot and window times are minutes since IST midnight.
+- **BR-TIME-3** Every displayed time uses 12-hour AM/PM (Spec §17).
+- **BR-TIME-4** Domain functions never read the system clock; `now` is passed in.
+
+## BR-MEAL: Meals and slots (Rule 1)
+
+- **BR-MEAL-1** Meals are Breakfast, Lunch and Dinner (`MealType`). Breakfast is modelled as one slot that spans its serving window (seed default 7:00–8:30 AM, to be confirmed). Lunch has 5 slots and Dinner has 7 (Spec §5.1), all from the database.
+- **BR-MEAL-2** Veg/Non-Veg is `DietType` in code. UI copy keeps the spec's wording "Meal type: Veg / Non-Veg".
+- **BR-MEAL-3** A disabled slot keeps its history but cannot receive new bookings. A slot with future bookings cannot be deleted; staff disable it and reassign (Admin §D).
+
+## BR-BOOK: Bookings
+
+- **BR-BOOK-1** Sources: `DEFAULT`, `MANUAL`, `PLAN_AHEAD_DATE`, `PLAN_AHEAD_WEEKDAY`, `ADMIN` (Rule 2).
+- **BR-BOOK-2** Statuses: `BOOKED`, `CANCELLED`, `COMPLETED`, `NO_SHOW`, `PAUSED_LEAVE`, `CANCELLED_BY_CLOSURE` (Rule 3).
+- **BR-BOOK-3** UI labels are derived and never stored (Spec §4.3):
+
+  | Condition                                                                    | Label                     |
+  | ---------------------------------------------------------------------------- | ------------------------- |
+  | No booking, Default Booking off for the meal                                 | Not Booked — Default Off  |
+  | `BOOKED`, source `DEFAULT`                                                   | Booked (Default)          |
+  | `BOOKED`, source `PLAN_AHEAD_WEEKDAY`                                        | Booked (Weekday Rule)     |
+  | `BOOKED`, source `MANUAL` / `PLAN_AHEAD_DATE`, no recurring booking that day | Booked Once               |
+  | `BOOKED`, date exception differs from what a recurring rule would give       | Changed for This Day      |
+  | `CANCELLED`                                                                  | Cancelled                 |
+  | `PAUSED_LEAVE`                                                               | Booking Paused — On Leave |
+  | `CANCELLED_BY_CLOSURE`                                                       | Mess Closed               |
+  | `NO_SHOW`                                                                    | No-show                   |
+  | `COMPLETED`                                                                  | Meal Completed            |
+
+  If `last_actor_type = STAFF`, the booking detail also shows "Updated by mess staff" (Admin §H).
+
+- **BR-BOOK-4 Resolution order** (Rule 4): **closure > approved leave > one-day date exception > weekday rule > Default Booking**. One pure function, `resolveEffectiveBooking`. A date exception beats a weekday rule for that date, and the app shows which rule applied (Spec §6.2, ADR-0014).
+- **BR-BOOK-5** Default Booking, one-day exceptions and weekday rules are separate records and never overwrite each other. A one-time manual booking never turns Default Booking on (Rule 5, Spec §3 Screen 8).
+- **BR-BOOK-6** Default Booking for a meal applies only when the overall switch is on, the meal switch is on, the meal is not auto-disabled by the no-show engine, and a slot is set (Spec §8.1).
+- **BR-BOOK-7** There is at most one booking per student/date/meal. A change of slot or diet updates that row and appends a `booking_events` entry.
+- **BR-BOOK-8** Students may book dates from today up to today + `bookingHorizonDays` (_policy_, default **7**, ADR-0011).
+
+## BR-DEAD: Deadlines (Rule 6)
+
+- **BR-DEAD-1** Cancellation closes `cancellationCutoffMinutes` (_policy_, default **60**) before the start of the booked slot. For Breakfast that is the window start (6:00 AM for a 7:00 AM start). (ADR-0010)
+- **BR-DEAD-2** Changing slot closes at the start of the currently booked slot (Spec §4.5).
+- **BR-DEAD-3** Changing Veg/Non-Veg closes `dietTypeChangeCutoffMinutes` (_policy_, default **60**) before slot start (ADR-0012).
+- **BR-DEAD-4** A deadline is passed when `now >= deadline`. At exactly the deadline the action is refused (`BOOKING_DEADLINE_PASSED`).
+- **BR-DEAD-5** Booking a new meal for today is allowed until the chosen slot's start, subject to capacity.
+- **BR-DEAD-6** "Cancel Today's Meals" cancels only the meals still before their deadline and reports the rest as not eligible (Spec §4.4).
+- **BR-DEAD-7** Staff overrides may bypass deadlines only with a mandatory reason (`OVERRIDE_REASON_REQUIRED`); the override is flagged in the audit log (Admin §H).
+
+## BR-CAP: Capacity and availability (Rule 7, Spec §5)
+
+- **BR-CAP-1** Official capacity for slot/date = the per-date override if one exists, else the weekday default, else the slot default.
+- **BR-CAP-2** `bookedCount` counts `BOOKED` bookings for the slot/date (plus `COMPLETED`/`NO_SHOW` for past dates). It is checked inside the booking transaction under an advisory lock on (slot, date) (ADR-0004).
+- **BR-CAP-3** `overCapacityCount = max(0, bookedCount - officialCapacity)`; `occupancyPct = min(100, bookedCount / officialCapacity × 100)`.
+- **BR-CAP-4** If `allowOverCapacityBooking` (_policy_, default **false**, ADR-0005) is false, a slot at capacity is disabled (`SLOT_UNAVAILABLE`). If true, the booking is accepted, flagged `is_over_capacity`, and the UI shows "Official capacity reached — additional bookings are being accepted under the mess policy" (Spec §5.2).
+- **BR-CAP-5 Availability labels** (ADR-0013), first match wins:
+  1. `OVER_CAPACITY` if `overCapacityCount > 0`
+  2. `FULL` if `bookedCount >= officialCapacity`
+  3. `FILLING_FAST` if `occupancyPct >= fillingFastThresholdPct` (_policy_, default **80**)
+  4. otherwise `AVAILABLE`
+
+  Additionally, `RECOMMENDED` marks the active slot with the lowest occupancy for that meal/date, provided it is ≤ `recommendedMaxOccupancyPct` (_policy_, default **60**). Ties go to the earlier slot. It never changes the student's choice (Spec §5.1).
+
+- **BR-CAP-6** Lowering a capacity below current bookings is allowed after the admin sees a warning with impact counts. Existing bookings are kept and become over-capacity (Admin §D).
+
+## BR-DEF: Default Booking generation and full-slot fallback
+
+- **BR-DEF-1** The nightly `generate-default-bookings` job materializes bookings for today+1 … today+`bookingHorizonDays` via `resolveEffectiveBooking`. It skips closures, leave, existing date exceptions and auto-disabled meals. It is idempotent.
+- **BR-DEF-2** If the preferred slot is full and over-capacity booking is off, `defaultSlotFullFallback` (_policy_, default **`ASK_STUDENT`**, ADR-0006) applies:
+  - `ASK_STUDENT`: no booking is created; the student is notified to pick a slot.
+  - `AUTO_NEXT_AVAILABLE`: the next later active slot with space is booked (wrapping to earlier slots if none), and the student is notified of the change. Their preference is not changed.
+- **BR-DEF-3** Turning the overall switch off cancels future `DEFAULT`-source bookings that are still before their cancellation deadline and keeps saved preferences. Turning it on regenerates them.
+
+## BR-LEAVE: Leave (Rule 9, Spec §11)
+
+- **BR-LEAVE-1** A leave covers the inclusive meal range from (startDate, startMeal) to (endDate, endMeal) in Breakfast→Lunch→Dinner order. Example: 22–31 May, Breakfast→Dinner = 10 days / 30 meals.
+- **BR-LEAVE-2** End cannot precede start (`LEAVE_RANGE_INVALID`). Leaves of the same student may not overlap.
+- **BR-LEAVE-3** If `leaveRequiresApproval` (_policy_, default **false**, ADR-0007) is false, a new leave is `APPROVED` immediately. If true it is `PENDING`, and meals are not paused until a staff member approves it.
+- **BR-LEAVE-4** On approval, bookings in range become `PAUSED_LEAVE`, and no bookings or No-shows are created for covered meals.
+- **BR-LEAVE-5** Upcoming / On Leave / Not on Leave are derived from dates and `now`; only `PENDING/APPROVED/REJECTED/CANCELLED` are stored.
+- **BR-LEAVE-6** Extend: the new end must be later than the current end, and the range is re-validated.
+- **BR-LEAVE-7** End early: the resume point is the first meal to book again. The earliest allowed resume point is the first meal whose cancellation deadline has not passed. Meals from the resume point onward are re-resolved, so Default Booking resumes.
+- **BR-LEAVE-8** Leave meals already in the past at approval time are not changed retroactively.
+
+## BR-NS: No-shows (Rule 10, Spec §10)
+
+- **BR-NS-1** A No-show is recorded only after the attendance window closes (service end + per-meal grace, default 0) for a `BOOKED` booking without a valid attendance record.
+- **BR-NS-2** On-time cancellations, leave meals, closures and approved appeals never count.
+- **BR-NS-3** Counts are per meal type over a rolling `noShowWindowDays` (_policy_, default **30**) ending today, counting only events with status `COUNTED`.
+- **BR-NS-4** At `noShowWarningThreshold` (_policy_, default **3**), show a dismissible warning naming the meal and how many more No-shows would disable it. At 4, the warning stays.
+- **BR-NS-5** At `noShowDisableThreshold` (_policy_, default **5**), Default Booking is auto-disabled for that meal only. Preferences are preserved, manual booking is still allowed, and the student is told why. (ADR-0009)
+- **BR-NS-6** Re-enable after auto-disable: Default Booking stays off. The student may switch it back on once their rolling count is below the disable threshold. Staff may re-enable at any time with a reason. If the event that caused the disable is overturned by an approved appeal and the count drops below the threshold, the disable is lifted automatically.
+- **BR-NS-7** If outage mode was active during the meal window, missing-attendance events are created as `HELD_FOR_REVIEW` and do not count until staff confirm them (Admin §I).
+- **BR-NS-8** Staff reset marks the student's counted events for that meal as `EXCLUDED/STAFF_RESET` with a mandatory reason.
+
+## BR-ATT: Attendance
+
+- **BR-ATT-1** Attendance sources are `FACE_VERIFICATION`, `MANUAL_FALLBACK` and `IMPORT`. `verified_at` is set only from the face-verification provider and is never fabricated (Spec §7).
+- **BR-ATT-2** Manual marking is allowed only during, or shortly after, the active meal window, and only for a student with a booking (or with an override reason).
+
+## BR-CLOS: Closures (Admin §F)
+
+- **BR-CLOS-1** Applying a closure marks affected `BOOKED` bookings `CANCELLED_BY_CLOSURE`, notifies the students and blocks No-shows for those meals.
+- **BR-CLOS-2** Removing a closure re-runs the resolver for affected student/meals. Bookings are restored to `BOOKED` where intent still resolves to a booking and capacity allows; otherwise the student is notified to rebook. (ADR-0017)
+
+## BR-CMP: Complaints (Rule 12, Spec §12)
+
+- **BR-CMP-1** Visible only to the submitter and staff with `complaints:read`. Internal notes are never returned by the student API.
+- **BR-CMP-2** `complaintPrivacyMode` (_policy_, default **`PRIVATE_IDENTIFIED`**, ADR-0008). Under `ANONYMOUS`, no student ID or hostel is stored. The submitter can see status through a device-held receipt token but gets no push or in-app status notifications. The mode is snapshotted per complaint.
+- **BR-CMP-3** Photos: JPEG/PNG/HEIC/WebP, max 5 MB each, max 3 per complaint, type checked by content, not extension.
+- **BR-CMP-4** Status flow: `NEW → IN_REVIEW → RESOLVED | REJECTED`. Each change is recorded in history and notifies an identified submitter.
+
+## BR-AUTH: Authentication (Rule 11, Admin §B)
+
+- **BR-AUTH-1** Student registration requires a reference number present and active in `college_roster`. Reference numbers are normalized to digits only before comparison.
+- **BR-AUTH-2** Passwords are hashed with argon2id. Hashes never appear in logs or responses.
+- **BR-AUTH-3** Password policy: students min 8 chars; staff min 12 chars and not equal to their email. Lockout after 5 consecutive failures for 15 minutes (students and staff). Login is also rate-limited per IP.
+- **BR-AUTH-4** Refresh tokens rotate on every use. Reuse of a rotated token revokes the whole session family.
+- **BR-AUTH-5** Staff must change their password on first login. TOTP 2FA is optional per staff member.
+- **BR-AUTH-6** Credential reset (no email/SMS assumed): staff issue a one-time code, shown once and valid 24 h, which the student enters with their reference number to set a new password. (ADR-0019)
+- **BR-AUTH-7** College-controlled profile fields (_policy_ `collegeControlledFields`, default reference number, full name, department, academic year) are read-only for students. Hostel/block, room, phones, email and photo are editable. (ADR-0018)
+
+## BR-IDEM: Idempotency (Rule 13)
+
+- **BR-IDEM-1** Booking, cancellation, leave and complaint submissions accept an `Idempotency-Key`. A replay within 24 h returns the original response. A replay with a different payload returns `IDEMPOTENCY_KEY_REUSED`. (ADR-0016)
+
+## BR-ADM: Admin mutations (Admin §P, working rule 7)
+
+- **BR-ADM-1** Every admin mutation checks a permission, writes exactly one audit entry in the same transaction, and requires a reason when it overrides a student rule.
+- **BR-ADM-2** Edited records carry `version`. A stale version returns `VERSION_CONFLICT`.
+
+## BR-FC: Forecasting (Admin §N)
+
+- **BR-FC-1** Expected plates = booked count × show-up rate. The show-up rate is the rolling average of attended ÷ booked for that meal over the last `forecastLookbackDays` (default **14**) days with data. With fewer than 7 days of history, the forecast is flagged low-confidence and falls back to the available days, or to 1.0 when there are none.
