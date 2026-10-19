@@ -1,0 +1,1175 @@
+// ENNEL database schema. Conventions: docs/architecture.md, ADR-0002 (dates/times), ADR-0003 (bookings).
+// Models are singular PascalCase mapped to plural snake_case tables; instants are UTC timestamptz;
+// business dates are DATE (IST calendar date); slot times are minutes since IST midnight.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum MealType {
+  BREAKFAST
+  LUNCH
+  DINNER
+}
+
+enum DietType {
+  VEG
+  NON_VEG
+}
+
+enum BookingSource {
+  DEFAULT
+  MANUAL
+  PLAN_AHEAD_DATE
+  PLAN_AHEAD_WEEKDAY
+  ADMIN
+}
+
+enum BookingStatus {
+  BOOKED
+  CANCELLED
+  COMPLETED
+  NO_SHOW
+  PAUSED_LEAVE
+  CANCELLED_BY_CLOSURE
+}
+
+enum BookingEventType {
+  CREATED
+  SLOT_CHANGED
+  DIET_CHANGED
+  CANCELLED
+  PAUSED_FOR_LEAVE
+  RESUMED_AFTER_LEAVE
+  CANCELLED_BY_CLOSURE
+  RESTORED_AFTER_CLOSURE
+  COMPLETED
+  MARKED_NO_SHOW
+  STATUS_CORRECTED
+}
+
+enum ActorType {
+  STUDENT
+  STAFF
+  SYSTEM
+}
+
+enum DateExceptionAction {
+  BOOK
+  SKIP
+}
+
+enum StudentStatus {
+  ACTIVE
+  LOCKED
+  DEACTIVATED
+}
+
+enum CredentialResetKind {
+  PASSWORD
+  REGISTRATION
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum LeaveChangeKind {
+  EXTENDED
+  ENDED_EARLY
+  CORRECTED
+}
+
+enum NoShowStatus {
+  COUNTED
+  HELD_FOR_REVIEW
+  EXCLUDED
+}
+
+enum NoShowExclusionCause {
+  APPEAL_APPROVED
+  STAFF_RESET
+  OUTAGE_REVIEW_DISMISSED
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum AttendanceSource {
+  FACE_VERIFICATION
+  MANUAL_FALLBACK
+  IMPORT
+}
+
+enum ComplaintType {
+  COMPLAINT
+  FEEDBACK
+}
+
+enum ComplaintCategory {
+  FOOD_QUALITY
+  FOREIGN_OBJECT
+  CLEANLINESS
+  SERVICE
+  MENU
+  OTHER
+}
+
+enum ComplaintStatus {
+  NEW
+  IN_REVIEW
+  RESOLVED
+  REJECTED
+}
+
+enum ComplaintPrivacyMode {
+  ANONYMOUS
+  PRIVATE_IDENTIFIED
+}
+
+enum SlotFullFallback {
+  AUTO_NEXT_AVAILABLE
+  ASK_STUDENT
+}
+
+enum MenuStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ClosureKind {
+  MESS_CLOSED
+  FESTIVAL
+  MAINTENANCE
+}
+
+enum ClosureStatus {
+  ACTIVE
+  REMOVED
+}
+
+enum AnnouncementStatus {
+  DRAFT
+  SCHEDULED
+  SENDING
+  SENT
+  CANCELLED
+}
+
+enum AnnouncementAudience {
+  ALL
+  HOSTEL
+  BLOCK
+  ACADEMIC_YEAR
+  CUSTOM
+}
+
+enum NotificationChannel {
+  IN_APP
+  PUSH
+}
+
+enum DeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}
+
+enum NotificationCategory {
+  ANNOUNCEMENT
+  BOOKING
+  REMINDER
+  WARNING
+  LEAVE
+  COMPLAINT
+  MENU
+  NO_SHOW
+}
+
+enum ImportJobType {
+  ROSTER
+  ATTENDANCE
+}
+
+enum ImportJobStatus {
+  UPLOADED
+  VALIDATED
+  CONFIRMED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum ImportRowOutcome {
+  VALID
+  INVALID
+  DUPLICATE_IN_FILE
+  EXISTING_UNCHANGED
+  EXISTING_UPDATE
+}
+
+enum StaffStatus {
+  ACTIVE
+  LOCKED
+  DISABLED
+}
+
+enum JobRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+// ───────────────────────── Hostels, roster, students ─────────────────────────
+
+model Hostel {
+  id        String        @id @default(uuid()) @db.Uuid
+  name      String        @unique
+  isActive  Boolean       @default(true) @map("is_active")
+  blocks    HostelBlock[]
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("hostels")
+}
+
+model HostelBlock {
+  id            String               @id @default(uuid()) @db.Uuid
+  hostelId      String               @map("hostel_id") @db.Uuid
+  name          String
+  isActive      Boolean              @default(true) @map("is_active")
+  hostel        Hostel               @relation(fields: [hostelId], references: [id])
+  rosterEntries CollegeRosterEntry[]
+  students      Student[]
+
+  @@unique([hostelId, name])
+  @@map("hostel_blocks")
+}
+
+/// College-controlled source of truth for who may register (Rule 11).
+model CollegeRosterEntry {
+  id              String       @id @default(uuid()) @db.Uuid
+  /// Normalized to digits only (BR-AUTH-1).
+  referenceNumber String       @unique @map("reference_number")
+  fullName        String       @map("full_name")
+  department      String
+  academicYear    Int          @map("academic_year")
+  hostelBlockId   String?      @map("hostel_block_id") @db.Uuid
+  roomNumber      String?      @map("room_number")
+  email           String?
+  isActive        Boolean      @default(true) @map("is_active")
+  lastImportJobId String?      @map("last_import_job_id") @db.Uuid
+  hostelBlock     HostelBlock? @relation(fields: [hostelBlockId], references: [id])
+  lastImportJob   ImportJob?   @relation(fields: [lastImportJobId], references: [id])
+  student         Student?
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([hostelBlockId])
+  @@index([department, academicYear])
+  @@map("college_roster")
+}
+
+/// A registered student account. Unregistered = roster entry without a student row.
+model Student {
+  id                    String             @id @default(uuid()) @db.Uuid
+  rosterEntryId         String             @unique @map("roster_entry_id") @db.Uuid
+  passwordHash          String             @map("password_hash")
+  status                StudentStatus      @default(ACTIVE)
+  fullName              String             @map("full_name")
+  department            String
+  academicYear          Int                @map("academic_year")
+  hostelBlockId         String?            @map("hostel_block_id") @db.Uuid
+  roomNumber            String?            @map("room_number")
+  phone                 String?
+  parentPhone           String?            @map("parent_phone")
+  email                 String?
+  photoKey              String?            @map("photo_key")
+  onboardingCompletedAt DateTime?          @map("onboarding_completed_at") @db.Timestamptz
+  /// Overall Default Booking switch (Spec §8.1); per-meal switches live in meal_preferences.
+  defaultBookingEnabled Boolean            @default(false) @map("default_booking_enabled")
+  failedLoginCount      Int                @default(0) @map("failed_login_count")
+  lockedUntil           DateTime?          @map("locked_until") @db.Timestamptz
+  version               Int                @default(1)
+  rosterEntry           CollegeRosterEntry @relation(fields: [rosterEntryId], references: [id])
+  hostelBlock           HostelBlock?       @relation(fields: [hostelBlockId], references: [id])
+  sessions              StudentSession[]
+  resetTickets          CredentialResetTicket[]
+  pushTokens            PushToken[]
+  mealPreferences       MealPreference[]
+  weekdayRules          WeekdayRule[]
+  dateExceptions        DateException[]
+  bookings              Booking[]
+  leaves                Leave[]
+  attendanceRecords     AttendanceRecord[]
+  noShowEvents          NoShowEvent[]
+  noShowAppeals         NoShowAppeal[]
+  complaints            Complaint[]
+  notifications         Notification[]
+  announcementDeliveries AnnouncementDelivery[]
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([hostelBlockId, status])
+  @@index([academicYear])
+  @@map("students")
+}
+
+/// Refresh-token rotation; reuse of a rotated token revokes the family (ADR-0015).
+model StudentSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  familyId     String    @map("family_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  userAgent    String?   @map("user_agent")
+  ip           String?
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz
+  lastUsedAt   DateTime? @map("last_used_at") @db.Timestamptz
+  student      Student   @relation(fields: [studentId], references: [id])
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([studentId, revokedAt])
+  @@index([familyId])
+  @@map("student_sessions")
+}
+
+/// Staff-issued one-time reset code; only the hash is stored (ADR-0019).
+model CredentialResetTicket {
+  id             String              @id @default(uuid()) @db.Uuid
+  studentId      String              @map("student_id") @db.Uuid
+  kind           CredentialResetKind
+  codeHash       String              @map("code_hash")
+  reason         String
+  failedAttempts Int                 @default(0) @map("failed_attempts")
+  expiresAt      DateTime            @map("expires_at") @db.Timestamptz
+  usedAt         DateTime?           @map("used_at") @db.Timestamptz
+  invalidatedAt  DateTime?           @map("invalidated_at") @db.Timestamptz
+  issuedById     String              @map("issued_by_id") @db.Uuid
+  student        Student             @relation(fields: [studentId], references: [id])
+  issuedBy       StaffUser           @relation("ResetTicketIssuedBy", fields: [issuedById], references: [id])
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([studentId, usedAt])
+  @@map("credential_reset_tickets")
+}
+
+model PushToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  token     String   @unique
+  platform  String
+  student   Student  @relation(fields: [studentId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([studentId])
+  @@map("push_tokens")
+}
+
+// ───────────────────────────── Mess configuration ─────────────────────────────
+
+model Meal {
+  id                     String          @id @default(uuid()) @db.Uuid
+  mealType               MealType        @unique @map("meal_type")
+  displayName            String          @map("display_name")
+  /// Minutes since IST midnight (ADR-0002).
+  serviceStartMinute     Int             @map("service_start_minute")
+  serviceEndMinute       Int             @map("service_end_minute")
+  /// The attendance window closes at service end + grace (BR-NS-1).
+  attendanceGraceMinutes Int             @default(0) @map("attendance_grace_minutes")
+  isActive               Boolean         @default(true) @map("is_active")
+  version                Int             @default(1)
+  slots                  MealSlot[]
+  menus                  Menu[]
+  closureMeals           MessClosureMeal[]
+  mealPreferences        MealPreference[]
+  weekdayRules           WeekdayRule[]
+  dateExceptions         DateException[]
+  bookings               Booking[]
+  attendanceRecords      AttendanceRecord[]
+  updatedAt              DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("meals")
+}
+
+/// Breakfast has a single slot spanning its window (BR-MEAL-1).
+model MealSlot {
+  id                String                @id @default(uuid()) @db.Uuid
+  mealId            String                @map("meal_id") @db.Uuid
+  label             String
+  startMinute       Int                   @map("start_minute")
+  endMinute         Int                   @map("end_minute")
+  sortOrder         Int                   @map("sort_order")
+  defaultCapacity   Int                   @map("default_capacity")
+  isActive          Boolean               @default(true) @map("is_active")
+  deletedAt         DateTime?             @map("deleted_at") @db.Timestamptz
+  version           Int                   @default(1)
+  meal              Meal                  @relation(fields: [mealId], references: [id])
+  weekdayCapacities SlotWeekdayCapacity[]
+  capacityOverrides SlotCapacityOverride[]
+  mealPreferences   MealPreference[]
+  weekdayRules      WeekdayRule[]
+  dateExceptions    DateException[]
+  bookings          Booking[]
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt         DateTime              @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([mealId, isActive, sortOrder])
+  @@map("meal_slots")
+}
+
+model SlotWeekdayCapacity {
+  slotId   String   @map("slot_id") @db.Uuid
+  /// 0 = Sunday … 6 = Saturday, IST.
+  weekday  Int
+  capacity Int
+  slot     MealSlot @relation(fields: [slotId], references: [id])
+
+  @@id([slotId, weekday])
+  @@map("slot_weekday_capacities")
+}
+
+/// Per-date capacity override, including special-meal days (Admin §F).
+model SlotCapacityOverride {
+  id          String    @id @default(uuid()) @db.Uuid
+  slotId      String    @map("slot_id") @db.Uuid
+  mealDate    DateTime  @map("meal_date") @db.Date
+  capacity    Int
+  reason      String
+  createdById String    @map("created_by_id") @db.Uuid
+  slot        MealSlot  @relation(fields: [slotId], references: [id])
+  createdBy   StaffUser @relation("CapacityOverrideCreatedBy", fields: [createdById], references: [id])
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([slotId, mealDate])
+  @@index([mealDate])
+  @@map("slot_capacity_overrides")
+}
+
+/// Singleton (id = 1). Unconfirmed policies are configuration (Rule 8, ADR-0005..0013).
+model MessPolicy {
+  id                          Int                  @id @default(1)
+  allowOverCapacityBooking    Boolean              @default(false) @map("allow_over_capacity_booking")
+  defaultSlotFullFallback     SlotFullFallback     @default(ASK_STUDENT) @map("default_slot_full_fallback")
+  leaveRequiresApproval       Boolean              @default(false) @map("leave_requires_approval")
+  complaintPrivacyMode        ComplaintPrivacyMode @default(PRIVATE_IDENTIFIED) @map("complaint_privacy_mode")
+  noShowWindowDays            Int                  @default(30) @map("no_show_window_days")
+  noShowWarningThreshold      Int                  @default(3) @map("no_show_warning_threshold")
+  noShowDisableThreshold      Int                  @default(5) @map("no_show_disable_threshold")
+  cancellationCutoffMinutes   Int                  @default(60) @map("cancellation_cutoff_minutes")
+  bookingHorizonDays          Int                  @default(7) @map("booking_horizon_days")
+  dietTypeChangeCutoffMinutes Int                  @default(60) @map("diet_type_change_cutoff_minutes")
+  fillingFastThresholdPct     Int                  @default(80) @map("filling_fast_threshold_pct")
+  recommendedMaxOccupancyPct  Int                  @default(60) @map("recommended_max_occupancy_pct")
+  forecastLookbackDays        Int                  @default(14) @map("forecast_lookback_days")
+  collegeControlledFields     String[]             @default(["fullName", "department", "academicYear"]) @map("college_controlled_fields")
+  version                     Int                  @default(1)
+  updatedById                 String?              @map("updated_by_id") @db.Uuid
+  updatedBy                   StaffUser?           @relation("PolicyUpdatedBy", fields: [updatedById], references: [id])
+  updatedAt                   DateTime             @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("mess_policy")
+}
+
+model MessPolicyHistory {
+  id          String    @id @default(uuid()) @db.Uuid
+  version     Int
+  before      Json
+  after       Json
+  reason      String
+  changedById String    @map("changed_by_id") @db.Uuid
+  changedBy   StaffUser @relation("PolicyChangedBy", fields: [changedById], references: [id])
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@map("mess_policy_history")
+}
+
+// ───────────────────────────── Menus & closures ─────────────────────────────
+
+model Menu {
+  id           String     @id @default(uuid()) @db.Uuid
+  mealDate     DateTime   @map("meal_date") @db.Date
+  mealId       String     @map("meal_id") @db.Uuid
+  status       MenuStatus @default(DRAFT)
+  /// Special-meal day (Admin §F).
+  isSpecial    Boolean    @default(false) @map("is_special")
+  specialTitle String?    @map("special_title")
+  publishedAt  DateTime?  @map("published_at") @db.Timestamptz
+  /// Hash of the last published items; a different hash on publish means "menu changed".
+  contentHash  String?    @map("content_hash")
+  version      Int        @default(1)
+  meal         Meal       @relation(fields: [mealId], references: [id])
+  items        MenuItem[]
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime   @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([mealDate, mealId])
+  @@index([status, mealDate])
+  @@map("menus")
+}
+
+model MenuItem {
+  id        String    @id @default(uuid()) @db.Uuid
+  menuId    String    @map("menu_id") @db.Uuid
+  name      String
+  dietType  DietType  @map("diet_type")
+  sortOrder Int       @map("sort_order")
+  deletedAt DateTime? @map("deleted_at") @db.Timestamptz
+  menu      Menu      @relation(fields: [menuId], references: [id])
+
+  @@index([menuId, sortOrder])
+  @@map("menu_items")
+}
+
+/// Closures are never hard-deleted (ADR-0017).
+model MessClosure {
+  id          String            @id @default(uuid()) @db.Uuid
+  mealDate    DateTime          @map("meal_date") @db.Date
+  kind        ClosureKind
+  title       String
+  reason      String
+  status      ClosureStatus     @default(ACTIVE)
+  createdById String            @map("created_by_id") @db.Uuid
+  removedById String?           @map("removed_by_id") @db.Uuid
+  removedAt   DateTime?         @map("removed_at") @db.Timestamptz
+  removalReason String?         @map("removal_reason")
+  meals       MessClosureMeal[]
+  createdBy   StaffUser         @relation("ClosureCreatedBy", fields: [createdById], references: [id])
+  removedBy   StaffUser?        @relation("ClosureRemovedBy", fields: [removedById], references: [id])
+  createdAt   DateTime          @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([mealDate, status])
+  @@map("mess_closures")
+}
+
+model MessClosureMeal {
+  closureId String      @map("closure_id") @db.Uuid
+  mealId    String      @map("meal_id") @db.Uuid
+  closure   MessClosure @relation(fields: [closureId], references: [id])
+  meal      Meal        @relation(fields: [mealId], references: [id])
+
+  @@id([closureId, mealId])
+  @@index([mealId])
+  @@map("mess_closure_meals")
+}
+
+// ─────────────────── Booking intent: three separate sources (Rule 5, ADR-0003) ───────────────────
+
+/// Default Booking per meal (Spec §8).
+model MealPreference {
+  studentId             String       @map("student_id") @db.Uuid
+  mealId                String       @map("meal_id") @db.Uuid
+  /// The student's own per-meal switch.
+  isEnabled             Boolean      @default(false) @map("is_enabled")
+  slotId                String?      @map("slot_id") @db.Uuid
+  dietType              DietType     @default(VEG) @map("diet_type")
+  /// Set by the no-show engine (BR-NS-5); preferences above are preserved.
+  autoDisabledAt        DateTime?    @map("auto_disabled_at") @db.Timestamptz
+  autoDisabledByEventId String?      @map("auto_disabled_by_event_id") @db.Uuid
+  version               Int          @default(1)
+  student               Student      @relation(fields: [studentId], references: [id])
+  meal                  Meal         @relation(fields: [mealId], references: [id])
+  slot                  MealSlot?    @relation(fields: [slotId], references: [id])
+  autoDisabledByEvent   NoShowEvent? @relation(fields: [autoDisabledByEventId], references: [id])
+  updatedAt             DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@id([studentId, mealId])
+  @@map("meal_preferences")
+}
+
+/// Plan Ahead "Choose a Day" recurring exception (Spec §6.2).
+model WeekdayRule {
+  id        String   @id @default(uuid()) @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  mealId    String   @map("meal_id") @db.Uuid
+  /// 0 = Sunday … 6 = Saturday, IST.
+  weekdays  Int[]
+  slotId    String   @map("slot_id") @db.Uuid
+  dietType  DietType @map("diet_type")
+  isActive  Boolean  @default(true) @map("is_active")
+  version   Int      @default(1)
+  student   Student  @relation(fields: [studentId], references: [id])
+  meal      Meal     @relation(fields: [mealId], references: [id])
+  slot      MealSlot @relation(fields: [slotId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([studentId, mealId, isActive])
+  @@map("weekday_rules")
+}
+
+/// One-day change from Home or Plan Ahead, including "skip this day" (Spec §4.3, §6.1).
+model DateException {
+  id        String              @id @default(uuid()) @db.Uuid
+  studentId String              @map("student_id") @db.Uuid
+  mealDate  DateTime            @map("meal_date") @db.Date
+  mealId    String              @map("meal_id") @db.Uuid
+  action    DateExceptionAction
+  slotId    String?             @map("slot_id") @db.Uuid
+  dietType  DietType?           @map("diet_type")
+  /// MANUAL | PLAN_AHEAD_DATE | ADMIN
+  origin    BookingSource
+  student   Student             @relation(fields: [studentId], references: [id])
+  meal      Meal                @relation(fields: [mealId], references: [id])
+  slot      MealSlot?           @relation(fields: [slotId], references: [id])
+  createdAt DateTime            @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime            @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([studentId, mealDate, mealId])
+  @@map("date_exceptions")
+}
+
+// ───────────────────────────── Materialized bookings ─────────────────────────────
+
+/// One row per student/date/meal with the resolved current state (ADR-0003).
+model Booking {
+  id                 String            @id @default(uuid()) @db.Uuid
+  studentId          String            @map("student_id") @db.Uuid
+  mealDate           DateTime          @map("meal_date") @db.Date
+  mealId             String            @map("meal_id") @db.Uuid
+  slotId             String            @map("slot_id") @db.Uuid
+  dietType           DietType          @map("diet_type")
+  source             BookingSource
+  status             BookingStatus
+  isOverCapacity     Boolean           @default(false) @map("is_over_capacity")
+  cancelledAt        DateTime?         @map("cancelled_at") @db.Timestamptz
+  /// Drives "Updated by mess staff" on the student's booking detail (Admin §H).
+  lastActorType      ActorType         @map("last_actor_type")
+  lastActorStaffId   String?           @map("last_actor_staff_id") @db.Uuid
+  lastOverrideReason String?           @map("last_override_reason")
+  version            Int               @default(1)
+  student            Student           @relation(fields: [studentId], references: [id])
+  meal               Meal              @relation(fields: [mealId], references: [id])
+  slot               MealSlot          @relation(fields: [slotId], references: [id])
+  lastActorStaff     StaffUser?        @relation("BookingLastActorStaff", fields: [lastActorStaffId], references: [id])
+  events             BookingEvent[]
+  attendanceRecord   AttendanceRecord?
+  noShowEvent        NoShowEvent?
+  createdAt          DateTime          @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime          @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([studentId, mealDate, mealId])
+  @@index([mealDate, mealId, slotId, status])
+  @@index([status, mealDate])
+  @@index([studentId, mealId, mealDate])
+  @@map("bookings")
+}
+
+model BookingEvent {
+  id           String           @id @default(uuid()) @db.Uuid
+  bookingId    String           @map("booking_id") @db.Uuid
+  type         BookingEventType
+  fromStatus   BookingStatus?   @map("from_status")
+  toStatus     BookingStatus?   @map("to_status")
+  payload      Json?
+  actorType    ActorType        @map("actor_type")
+  actorStaffId String?          @map("actor_staff_id") @db.Uuid
+  reason       String?
+  booking      Booking          @relation(fields: [bookingId], references: [id])
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([bookingId, createdAt])
+  @@index([type, createdAt])
+  @@map("booking_events")
+}
+
+/// Rule 13, ADR-0016.
+model IdempotencyKey {
+  id           String   @id @default(uuid()) @db.Uuid
+  /// "student:<id>" | "staff:<id>"
+  actorKey     String   @map("actor_key")
+  key          String
+  route        String
+  requestHash  String   @map("request_hash")
+  responseCode Int      @map("response_code")
+  responseBody Json     @map("response_body")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([actorKey, key])
+  @@index([createdAt])
+  @@map("idempotency_keys")
+}
+
+// ───────────────────────────── Leave ─────────────────────────────
+
+model Leave {
+  id               String        @id @default(uuid()) @db.Uuid
+  studentId        String        @map("student_id") @db.Uuid
+  startDate        DateTime      @map("start_date") @db.Date
+  startMealType    MealType      @map("start_meal_type")
+  endDate          DateTime      @map("end_date") @db.Date
+  endMealType      MealType      @map("end_meal_type")
+  reason           String?
+  status           LeaveStatus
+  decidedById      String?       @map("decided_by_id") @db.Uuid
+  decidedAt        DateTime?     @map("decided_at") @db.Timestamptz
+  rejectionReason  String?       @map("rejection_reason")
+  createdByStaffId String?       @map("created_by_staff_id") @db.Uuid
+  version          Int           @default(1)
+  student          Student       @relation(fields: [studentId], references: [id])
+  decidedBy        StaffUser?    @relation("LeaveDecidedBy", fields: [decidedById], references: [id])
+  createdByStaff   StaffUser?    @relation("LeaveCreatedByStaff", fields: [createdByStaffId], references: [id])
+  changes          LeaveChange[]
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([studentId, status, startDate, endDate])
+  @@index([status, startDate])
+  @@map("leaves")
+}
+
+/// Extend / end early (resume point) / staff correction history.
+model LeaveChange {
+  id           String          @id @default(uuid()) @db.Uuid
+  leaveId      String          @map("leave_id") @db.Uuid
+  kind         LeaveChangeKind
+  before       Json
+  after        Json
+  actorType    ActorType       @map("actor_type")
+  actorStaffId String?         @map("actor_staff_id") @db.Uuid
+  reason       String?
+  leave        Leave           @relation(fields: [leaveId], references: [id])
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([leaveId, createdAt])
+  @@map("leave_changes")
+}
+
+// ───────────────────────────── Attendance ─────────────────────────────
+
+model AttendanceRecord {
+  id             String                  @id @default(uuid()) @db.Uuid
+  bookingId      String?                 @unique @map("booking_id") @db.Uuid
+  studentId      String                  @map("student_id") @db.Uuid
+  mealDate       DateTime                @map("meal_date") @db.Date
+  mealId         String                  @map("meal_id") @db.Uuid
+  source         AttendanceSource
+  /// Only from FACE_VERIFICATION; never fabricated (BR-ATT-1).
+  verifiedAt     DateTime?               @map("verified_at") @db.Timestamptz
+  /// When the record was written (manual mark or import).
+  recordedAt     DateTime                @map("recorded_at") @db.Timestamptz
+  recordedById   String?                 @map("recorded_by_id") @db.Uuid
+  importJobId    String?                 @map("import_job_id") @db.Uuid
+  outageWindowId String?                 @map("outage_window_id") @db.Uuid
+  booking        Booking?                @relation(fields: [bookingId], references: [id])
+  student        Student                 @relation(fields: [studentId], references: [id])
+  meal           Meal                    @relation(fields: [mealId], references: [id])
+  recordedBy     StaffUser?              @relation("AttendanceRecordedBy", fields: [recordedById], references: [id])
+  importJob      ImportJob?              @relation(fields: [importJobId], references: [id])
+  outageWindow   AttendanceOutageWindow? @relation(fields: [outageWindowId], references: [id])
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([studentId, mealDate, mealId])
+  @@index([mealDate, mealId])
+  @@map("attendance_records")
+}
+
+model AttendanceOutageWindow {
+  id                String             @id @default(uuid()) @db.Uuid
+  startedAt         DateTime           @map("started_at") @db.Timestamptz
+  endedAt           DateTime?          @map("ended_at") @db.Timestamptz
+  reason            String
+  startedById       String             @map("started_by_id") @db.Uuid
+  endedById         String?            @map("ended_by_id") @db.Uuid
+  startedBy         StaffUser          @relation("OutageStartedBy", fields: [startedById], references: [id])
+  endedBy           StaffUser?         @relation("OutageEndedBy", fields: [endedById], references: [id])
+  attendanceRecords AttendanceRecord[]
+
+  @@index([startedAt, endedAt])
+  @@map("attendance_outage_windows")
+}
+
+// ───────────────────────────── No-shows ─────────────────────────────
+
+model NoShowEvent {
+  id                  String                @id @default(uuid()) @db.Uuid
+  bookingId           String                @unique @map("booking_id") @db.Uuid
+  studentId           String                @map("student_id") @db.Uuid
+  mealDate            DateTime              @map("meal_date") @db.Date
+  mealType            MealType              @map("meal_type")
+  status              NoShowStatus
+  exclusionCause      NoShowExclusionCause? @map("exclusion_cause")
+  excludedById        String?               @map("excluded_by_id") @db.Uuid
+  excludedReason      String?               @map("excluded_reason")
+  excludedAt          DateTime?             @map("excluded_at") @db.Timestamptz
+  booking             Booking               @relation(fields: [bookingId], references: [id])
+  student             Student               @relation(fields: [studentId], references: [id])
+  excludedBy          StaffUser?            @relation("NoShowExcludedBy", fields: [excludedById], references: [id])
+  appeals             NoShowAppeal[]
+  disabledPreferences MealPreference[]
+  createdAt           DateTime              @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([studentId, mealType, status, mealDate])
+  @@index([status, mealDate])
+  @@map("no_show_events")
+}
+
+model NoShowAppeal {
+  id             String       @id @default(uuid()) @db.Uuid
+  eventId        String       @map("event_id") @db.Uuid
+  studentId      String       @map("student_id") @db.Uuid
+  message        String
+  status         AppealStatus @default(PENDING)
+  decidedById    String?      @map("decided_by_id") @db.Uuid
+  decidedAt      DateTime?    @map("decided_at") @db.Timestamptz
+  decisionReason String?      @map("decision_reason")
+  event          NoShowEvent  @relation(fields: [eventId], references: [id])
+  student        Student      @relation(fields: [studentId], references: [id])
+  decidedBy      StaffUser?   @relation("AppealDecidedBy", fields: [decidedById], references: [id])
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([status, createdAt])
+  @@index([eventId])
+  @@map("no_show_appeals")
+}
+
+// ───────────────────────────── Complaints ─────────────────────────────
+
+model Complaint {
+  id                 String                   @id @default(uuid()) @db.Uuid
+  /// Shown to the student on submit (Spec §12).
+  referenceCode      String                   @unique @map("reference_code")
+  /// NULL when submitted under ANONYMOUS (Rule 12, ADR-0008).
+  studentId          String?                  @map("student_id") @db.Uuid
+  /// NULL under ANONYMOUS too, since hostel could de-anonymize.
+  hostelBlockId      String?                  @map("hostel_block_id") @db.Uuid
+  /// Snapshot of the policy at submission.
+  privacyMode        ComplaintPrivacyMode     @map("privacy_mode")
+  submitterTokenHash String?                  @map("submitter_token_hash")
+  type               ComplaintType
+  category           ComplaintCategory
+  mealType           MealType?                @map("meal_type")
+  mealDate           DateTime?                @map("meal_date") @db.Date
+  description        String
+  status             ComplaintStatus          @default(NEW)
+  assignedToId       String?                  @map("assigned_to_id") @db.Uuid
+  studentResponse    String?                  @map("student_response")
+  resolvedAt         DateTime?                @map("resolved_at") @db.Timestamptz
+  version            Int                      @default(1)
+  student            Student?                 @relation(fields: [studentId], references: [id])
+  assignedTo         StaffUser?               @relation("ComplaintAssignedTo", fields: [assignedToId], references: [id])
+  photos             ComplaintPhoto[]
+  notes              ComplaintNote[]
+  statusHistory      ComplaintStatusHistory[]
+  createdAt          DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status, createdAt])
+  @@index([category, mealType, mealDate])
+  @@index([studentId, createdAt])
+  @@index([hostelBlockId])
+  @@map("complaints")
+}
+
+model ComplaintPhoto {
+  id          String    @id @default(uuid()) @db.Uuid
+  complaintId String    @map("complaint_id") @db.Uuid
+  storageKey  String    @map("storage_key")
+  mimeType    String    @map("mime_type")
+  sizeBytes   Int       @map("size_bytes")
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([complaintId])
+  @@map("complaint_photos")
+}
+
+/// Internal; never returned by the student API.
+model ComplaintNote {
+  id          String    @id @default(uuid()) @db.Uuid
+  complaintId String    @map("complaint_id") @db.Uuid
+  authorId    String    @map("author_id") @db.Uuid
+  body        String
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+  author      StaffUser @relation("ComplaintNoteAuthor", fields: [authorId], references: [id])
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([complaintId, createdAt])
+  @@map("complaint_notes")
+}
+
+model ComplaintStatusHistory {
+  id          String           @id @default(uuid()) @db.Uuid
+  complaintId String           @map("complaint_id") @db.Uuid
+  fromStatus  ComplaintStatus? @map("from_status")
+  toStatus    ComplaintStatus  @map("to_status")
+  actorId     String?          @map("actor_id") @db.Uuid
+  complaint   Complaint        @relation(fields: [complaintId], references: [id])
+  actor       StaffUser?       @relation("ComplaintStatusActor", fields: [actorId], references: [id])
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([complaintId, createdAt])
+  @@map("complaint_status_history")
+}
+
+// ───────────────────────── Notifications & announcements ─────────────────────────
+
+model Notification {
+  id                String               @id @default(uuid()) @db.Uuid
+  studentId         String               @map("student_id") @db.Uuid
+  category          NotificationCategory
+  title             String
+  body              String
+  relatedEntityType String?              @map("related_entity_type")
+  relatedEntityId   String?              @map("related_entity_id")
+  /// Prevents duplicate notifications, e.g. "reminder:cancel:<bookingId>" (Spec §13).
+  dedupeKey         String?              @unique @map("dedupe_key")
+  readAt            DateTime?            @map("read_at") @db.Timestamptz
+  student           Student              @relation(fields: [studentId], references: [id])
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([studentId, readAt, createdAt])
+  @@map("notifications")
+}
+
+model Announcement {
+  id             String                 @id @default(uuid()) @db.Uuid
+  title          String
+  body           String
+  category       String
+  audienceType   AnnouncementAudience   @map("audience_type")
+  /// { hostelIds?, blockIds?, academicYears?, studentIds? }
+  audienceFilter Json                   @map("audience_filter")
+  channels       NotificationChannel[]
+  status         AnnouncementStatus     @default(DRAFT)
+  scheduledFor   DateTime?              @map("scheduled_for") @db.Timestamptz
+  sentAt         DateTime?              @map("sent_at") @db.Timestamptz
+  createdById    String                 @map("created_by_id") @db.Uuid
+  version        Int                    @default(1)
+  createdBy      StaffUser              @relation("AnnouncementCreatedBy", fields: [createdById], references: [id])
+  deliveries     AnnouncementDelivery[]
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime               @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([status, scheduledFor])
+  @@map("announcements")
+}
+
+model AnnouncementDelivery {
+  id             String              @id @default(uuid()) @db.Uuid
+  announcementId String              @map("announcement_id") @db.Uuid
+  studentId      String              @map("student_id") @db.Uuid
+  channel        NotificationChannel
+  status         DeliveryStatus      @default(PENDING)
+  error          String?
+  deliveredAt    DateTime?           @map("delivered_at") @db.Timestamptz
+  announcement   Announcement        @relation(fields: [announcementId], references: [id])
+  student        Student             @relation(fields: [studentId], references: [id])
+
+  @@unique([announcementId, studentId, channel])
+  @@index([announcementId, status])
+  @@map("announcement_deliveries")
+}
+
+// ───────────────────────────── Staff, RBAC, audit ─────────────────────────────
+
+model StaffUser {
+  id                    String                   @id @default(uuid()) @db.Uuid
+  email                 String                   @unique
+  fullName              String                   @map("full_name")
+  passwordHash          String                   @map("password_hash")
+  status                StaffStatus              @default(ACTIVE)
+  mustChangePassword    Boolean                  @default(true) @map("must_change_password")
+  passwordChangedAt     DateTime?                @map("password_changed_at") @db.Timestamptz
+  failedLoginCount      Int                      @default(0) @map("failed_login_count")
+  lockedUntil           DateTime?                @map("locked_until") @db.Timestamptz
+  totpEnabled           Boolean                  @default(false) @map("totp_enabled")
+  /// AES-GCM encrypted with a key from .env.
+  totpSecretEnc         String?                  @map("totp_secret_enc")
+  deletedAt             DateTime?                @map("deleted_at") @db.Timestamptz
+  version               Int                      @default(1)
+  roles                 StaffUserRole[]
+  sessions              StaffSession[]
+  issuedResetTickets    CredentialResetTicket[]  @relation("ResetTicketIssuedBy")
+  capacityOverrides     SlotCapacityOverride[]   @relation("CapacityOverrideCreatedBy")
+  policyUpdates         MessPolicy[]             @relation("PolicyUpdatedBy")
+  policyChanges         MessPolicyHistory[]      @relation("PolicyChangedBy")
+  closuresCreated       MessClosure[]            @relation("ClosureCreatedBy")
+  closuresRemoved       MessClosure[]            @relation("ClosureRemovedBy")
+  bookingsTouched       Booking[]                @relation("BookingLastActorStaff")
+  leavesDecided         Leave[]                  @relation("LeaveDecidedBy")
+  leavesCreated         Leave[]                  @relation("LeaveCreatedByStaff")
+  attendanceRecorded    AttendanceRecord[]       @relation("AttendanceRecordedBy")
+  outagesStarted        AttendanceOutageWindow[] @relation("OutageStartedBy")
+  outagesEnded          AttendanceOutageWindow[] @relation("OutageEndedBy")
+  noShowsExcluded       NoShowEvent[]            @relation("NoShowExcludedBy")
+  appealsDecided        NoShowAppeal[]           @relation("AppealDecidedBy")
+  complaintsAssigned    Complaint[]              @relation("ComplaintAssignedTo")
+  complaintNotes        ComplaintNote[]          @relation("ComplaintNoteAuthor")
+  complaintStatusChanges ComplaintStatusHistory[] @relation("ComplaintStatusActor")
+  announcements         Announcement[]           @relation("AnnouncementCreatedBy")
+  importJobs            ImportJob[]              @relation("ImportJobCreatedBy")
+  createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt             DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("staff_users")
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  /// SUPER_ADMIN, MESS_MANAGER, MESS_STAFF, WARDEN, AUDITOR
+  key         String           @unique
+  name        String
+  isSystem    Boolean          @default(true) @map("is_system")
+  permissions RolePermission[]
+  staff       StaffUserRole[]
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("roles")
+}
+
+/// Synced from @ennel/shared PERMISSION_KEYS by the seed.
+model Permission {
+  key         String           @id
+  description String
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  roleId        String     @map("role_id") @db.Uuid
+  permissionKey String     @map("permission_key")
+  role          Role       @relation(fields: [roleId], references: [id])
+  permission    Permission @relation(fields: [permissionKey], references: [key])
+
+  @@id([roleId, permissionKey])
+  @@index([permissionKey])
+  @@map("role_permissions")
+}
+
+model StaffUserRole {
+  staffUserId String    @map("staff_user_id") @db.Uuid
+  roleId      String    @map("role_id") @db.Uuid
+  staffUser   StaffUser @relation(fields: [staffUserId], references: [id])
+  role        Role      @relation(fields: [roleId], references: [id])
+
+  @@id([staffUserId, roleId])
+  @@index([roleId])
+  @@map("staff_user_roles")
+}
+
+model StaffSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  staffUserId  String    @map("staff_user_id") @db.Uuid
+  familyId     String    @map("family_id") @db.Uuid
+  tokenHash    String    @unique @map("token_hash")
+  replacedById String?   @map("replaced_by_id") @db.Uuid
+  userAgent    String?   @map("user_agent")
+  ip           String?
+  expiresAt    DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt    DateTime? @map("revoked_at") @db.Timestamptz
+  lastUsedAt   DateTime? @map("last_used_at") @db.Timestamptz
+  staffUser    StaffUser @relation(fields: [staffUserId], references: [id])
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([staffUserId, revokedAt])
+  @@index([familyId])
+  @@map("staff_sessions")
+}
+
+/// Immutable: a trigger rejects UPDATE/DELETE/TRUNCATE (migration audit_log_immutable, Admin §P).
+/// Deliberately no FK to staff_users so audit history stands on its own.
+model AuditLog {
+  id         String    @id @default(uuid()) @db.Uuid
+  actorId    String?   @map("actor_id") @db.Uuid
+  actorType  ActorType @map("actor_type")
+  actorRoles String[]  @map("actor_roles")
+  /// e.g. "booking.override.cancel"
+  action     String
+  entityType String    @map("entity_type")
+  entityId   String    @map("entity_id")
+  before     Json?
+  after      Json?
+  reason     String?
+  isOverride Boolean   @default(false) @map("is_override")
+  ip         String?
+  userAgent  String?   @map("user_agent")
+  requestId  String?   @map("request_id")
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ───────────────────────────── Imports & jobs ─────────────────────────────
+
+model ImportJob {
+  id                String               @id @default(uuid()) @db.Uuid
+  type              ImportJobType
+  status            ImportJobStatus
+  fileName          String               @map("file_name")
+  storageKey        String               @map("storage_key")
+  /// e.g. { mealDate, mealType } for attendance imports.
+  context           Json?
+  totalRows         Int                  @default(0) @map("total_rows")
+  validRows         Int                  @default(0) @map("valid_rows")
+  invalidRows       Int                  @default(0) @map("invalid_rows")
+  createdById       String               @map("created_by_id") @db.Uuid
+  confirmedAt       DateTime?            @map("confirmed_at") @db.Timestamptz
+  completedAt       DateTime?            @map("completed_at") @db.Timestamptz
+  error             String?
+  createdBy         StaffUser            @relation("ImportJobCreatedBy", fields: [createdById], references: [id])
+  rows              ImportJobRow[]
+  rosterEntries     CollegeRosterEntry[]
+  attendanceRecords AttendanceRecord[]
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([type, createdAt])
+  @@map("import_jobs")
+}
+
+model ImportJobRow {
+  id          String           @id @default(uuid()) @db.Uuid
+  importJobId String           @map("import_job_id") @db.Uuid
+  rowNumber   Int              @map("row_number")
+  raw         Json
+  outcome     ImportRowOutcome
+  errors      Json?
+  importJob   ImportJob        @relation(fields: [importJobId], references: [id])
+
+  @@unique([importJobId, rowNumber])
+  @@index([importJobId, outcome])
+  @@map("import_job_rows")
+}
+
+/// System health (Admin §Q) and job idempotency; BullMQ remains the queue of record.
+model JobRun {
+  id         String       @id @default(uuid()) @db.Uuid
+  jobName    String       @map("job_name")
+  /// e.g. "close-attendance-window:2026-10-19:LUNCH"
+  runKey     String       @map("run_key")
+  status     JobRunStatus
+  attempt    Int          @default(1)
+  startedAt  DateTime     @map("started_at") @db.Timestamptz
+  finishedAt DateTime?    @map("finished_at") @db.Timestamptz
+  error      String?
+  stats      Json?
+
+  @@unique([jobName, runKey])
+  @@index([jobName, startedAt])
+  @@map("job_runs")
+}
