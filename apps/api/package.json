@@ -1,0 +1,43 @@
+{
+  "name": "@ennel/api",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "nest start --watch",
+    "build": "nest build",
+    "start": "node dist/main.js",
+    "typecheck": "prisma generate --no-hints && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json",
+    "test": "prisma generate --no-hints && vitest run",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:validate": "prisma validate",
+    "seed": "prisma db seed"
+  },
+  "dependencies": {
+    "@ennel/shared": "workspace:*",
+    "@nestjs/common": "^11.2",
+    "@nestjs/core": "^11.2",
+    "@nestjs/jwt": "^11",
+    "@nestjs/platform-express": "^11.2",
+    "@nestjs/swagger": "^11",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "argon2": "^0.45",
+    "reflect-metadata": "^0.2",
+    "rxjs": "^7.8",
+    "zod": "^4.6"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11",
+    "@nestjs/schematics": "^11",
+    "@nestjs/testing": "^11.2",
+    "@swc/core": "^1",
+    "@types/express": "^5",
+    "@types/supertest": "^6",
+    "prisma": "7.10.1",
+    "supertest": "^7",
+    "tsx": "^4",
+    "unplugin-swc": "^2",
+    "vitest": "^4.1"
+  }
+}
