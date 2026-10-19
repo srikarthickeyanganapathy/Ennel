@@ -1,0 +1,45 @@
+{
+  "name": "@ennel/admin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@ennel/shared": "workspace:*",
+    "@hookform/resolvers": "^5",
+    "@tanstack/react-query": "^5",
+    "@tanstack/react-table": "^8",
+    "class-variance-authority": "^0.7",
+    "clsx": "^2",
+    "date-fns": "^4.4",
+    "date-fns-tz": "^3.2",
+    "lucide-react": "^1.59.0",
+    "radix-ui": "^1.8.1",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-hook-form": "^7",
+    "react-router": "^7.18",
+    "recharts": "^3",
+    "tailwind-merge": "^3",
+    "zod": "^4.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4",
+    "@testing-library/dom": "^10",
+    "@testing-library/jest-dom": "^6",
+    "@testing-library/react": "^16",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^6",
+    "jsdom": "^27",
+    "tailwindcss": "^4",
+    "vite": "^8",
+    "vitest": "^4.1"
+  }
+}

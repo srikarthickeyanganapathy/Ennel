@@ -1,0 +1,47 @@
+@import 'tailwindcss';
+
+/*
+ * Colour values come from @ennel/shared THEME_COLORS and are written to these variables at
+ * startup by applyTheme(), so the student and admin apps share one palette (Spec §17).
+ */
+@theme inline {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --color-primary: var(--ennel-primary);
+  --color-primary-foreground: var(--ennel-primary-foreground);
+  --color-mint: var(--ennel-mint);
+  --color-background: var(--ennel-background);
+  --color-surface: var(--ennel-surface);
+  --color-border: var(--ennel-border);
+  --color-foreground: var(--ennel-text);
+  --color-muted-foreground: var(--ennel-text-muted);
+  --color-warning: var(--ennel-warning);
+  --color-warning-surface: var(--ennel-warning-surface);
+  --color-danger: var(--ennel-danger);
+  --color-danger-surface: var(--ennel-danger-surface);
+  --color-success: var(--ennel-success);
+  --color-success-surface: var(--ennel-success-surface);
+  --color-info: var(--ennel-info);
+  --color-info-surface: var(--ennel-info-surface);
+  /* shadcn/ui token names mapped onto the ENNEL palette. */
+  --color-destructive: var(--ennel-danger);
+  --color-ring: var(--ennel-primary);
+  --color-accent: var(--ennel-mint);
+  --color-accent-foreground: var(--ennel-primary);
+  --color-secondary: var(--ennel-surface);
+  --color-secondary-foreground: var(--ennel-text);
+  --color-input: var(--ennel-border);
+  --color-muted: var(--ennel-surface);
+  --radius-sm: var(--ennel-radius-sm);
+  --radius-md: var(--ennel-radius-md);
+  --radius-lg: var(--ennel-radius-lg);
+  --radius-xl: var(--ennel-radius-xl);
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-primary;
+  }
+}
