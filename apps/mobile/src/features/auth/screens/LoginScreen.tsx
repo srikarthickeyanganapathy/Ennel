@@ -22,7 +22,7 @@ export function LoginScreen() {
   const params = useLocalSearchParams<{ referenceNumber?: string; isExisting?: string }>();
   const login = useLogin();
   const lock = useSubmitLock();
-  const { control, handleSubmit, formState } = useForm<FormInput, unknown, FormOutput>({
+  const { control, handleSubmit, formState, getValues } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(loginRequestSchema),
     defaultValues: { referenceNumber: params.referenceNumber ?? '', password: '' },
   });
@@ -74,8 +74,18 @@ export function LoginScreen() {
         )}
       />
       <Text className="text-sm text-muted-foreground">
-        Forgot your password? Contact the mess office.
+        Forgot your password? Ask the mess office for a reset code.
       </Text>
+      <AppButton
+        label="I Have a Reset Code"
+        variant="secondary"
+        onPress={() =>
+          router.push({
+            pathname: '/(auth)/reset-with-code',
+            params: { referenceNumber: getValues('referenceNumber') },
+          })
+        }
+      />
     </Screen>
   );
 }

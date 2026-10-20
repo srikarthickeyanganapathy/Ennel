@@ -3,6 +3,7 @@ import {
   authSessionSchema,
   type LoginRequest,
   type RegisterRequest,
+  type ResetWithCodeRequest,
   type RosterCheckRequest,
   type RosterCheckResponse,
   rosterCheckResponseSchema,
@@ -40,6 +41,16 @@ export function logoutStudent(refreshToken: string): Promise<void> {
   return apiRequest('/api/v1/auth/logout', {
     method: 'POST',
     body: { refreshToken },
+    isAuthenticated: false,
+  });
+}
+
+/** ADR-0019: completes a reset code issued by the mess office and signs the student in. */
+export function resetPasswordWithCode(body: ResetWithCodeRequest): Promise<AuthSession> {
+  return apiRequest('/api/v1/auth/reset-with-code', {
+    method: 'POST',
+    body,
+    schema: authSessionSchema,
     isAuthenticated: false,
   });
 }

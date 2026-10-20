@@ -3,13 +3,20 @@ import {
   type AuthSession,
   type LoginRequest,
   type RegisterRequest,
+  type ResetWithCodeRequest,
   type RosterCheckRequest,
   type RosterCheckResponse,
 } from '@ennel/shared';
 import { type ApiError } from '@/shared/api-client/api-error';
 import { useSessionStore } from '@/shared/store/session.store';
 import { readRefreshToken } from '@/shared/store/token-storage';
-import { checkRoster, loginStudent, logoutStudent, registerStudent } from '../api/auth-api';
+import {
+  checkRoster,
+  loginStudent,
+  logoutStudent,
+  registerStudent,
+  resetPasswordWithCode,
+} from '../api/auth-api';
 
 export function useRosterCheck() {
   return useMutation<RosterCheckResponse, ApiError, RosterCheckRequest>({
@@ -29,6 +36,14 @@ export function useLogin() {
   const setSession = useSessionStore((state) => state.setSession);
   return useMutation<AuthSession, ApiError, LoginRequest>({
     mutationFn: loginStudent,
+    onSuccess: setSession,
+  });
+}
+
+export function useResetWithCode() {
+  const setSession = useSessionStore((state) => state.setSession);
+  return useMutation<AuthSession, ApiError, ResetWithCodeRequest>({
+    mutationFn: resetPasswordWithCode,
     onSuccess: setSession,
   });
 }
