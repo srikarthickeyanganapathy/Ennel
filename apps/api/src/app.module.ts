@@ -11,6 +11,8 @@ import { RedisModule } from './infrastructure/redis/redis.module';
 import { StorageModule } from './infrastructure/storage/storage.module';
 import { AdminAuthModule } from './modules/admin/admin-auth/admin-auth.module';
 import { AdminCoreModule } from './modules/admin/admin-core.module';
+import { AdminMenusModule } from './modules/admin/admin-menus/admin-menus.module';
+import { AdminMessConfigModule } from './modules/admin/admin-mess-config/admin-mess-config.module';
 import { AdminStudentsModule } from './modules/admin/admin-students/admin-students.module';
 import { AuditLogModule } from './modules/admin/audit-log/audit-log.module';
 import { RbacModule } from './modules/admin/rbac/rbac.module';
@@ -42,6 +44,8 @@ import { StudentsModule } from './modules/students/students.module';
     RbacModule,
     StaffUsersModule,
     AdminStudentsModule,
+    AdminMessConfigModule,
+    AdminMenusModule,
   ],
   providers: [{ provide: APP_FILTER, useClass: AppExceptionFilter }],
 })
