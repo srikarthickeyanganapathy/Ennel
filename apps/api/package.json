@@ -13,7 +13,8 @@
     "prisma:validate": "prisma validate",
     "seed": "prisma db seed",
     "test:unit": "prisma generate --no-hints && vitest run",
-    "test:integration": "prisma generate --no-hints && vitest run -c vitest.integration.config.mts"
+    "test:integration": "prisma generate --no-hints && vitest run -c vitest.integration.config.mts",
+    "seed:dev": "prisma db seed -- --dev"
   },
   "dependencies": {
     "@ennel/shared": "workspace:*",

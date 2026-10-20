@@ -3,12 +3,15 @@ import { resolve } from 'node:path';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../../src/generated/prisma/client';
 import { seedDevRoster } from './dev-roster.seed';
-import { seedMessConfig } from './mess-config.seed';
+import { seedMeals, seedSampleSlots } from './mess-config.seed';
 import { seedPolicy } from './policy.seed';
 import { seedRbac } from './rbac.seed';
 import { seedSuperAdmin } from './super-admin.seed';
 
 // Idempotent: safe to run repeatedly; it never overwrites data staff have edited.
+// `--dev` (pnpm db:seed:dev) adds sample slots and a fictitious roster for local development.
+const isDevSeed = process.argv.includes('--dev');
+
 async function main(): Promise<void> {
   const rootEnvFile = resolve(__dirname, '../../../../.env');
   if (existsSync(rootEnvFile)) process.loadEnvFile(rootEnvFile);
@@ -19,9 +22,12 @@ async function main(): Promise<void> {
   try {
     await seedRbac(prisma);
     await seedPolicy(prisma);
-    await seedMessConfig(prisma);
-    if (process.env.NODE_ENV === 'development') await seedDevRoster(prisma);
+    await seedMeals(prisma);
     await seedSuperAdmin(prisma, process.env);
+    if (isDevSeed) {
+      await seedSampleSlots(prisma);
+      await seedDevRoster(prisma);
+    }
   } finally {
     await prisma.$disconnect();
   }
