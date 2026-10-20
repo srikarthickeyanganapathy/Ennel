@@ -12,9 +12,13 @@ The student spec (`docs/ennel-spec.md`) excludes the admin dashboard. The requir
 
 Default roles: `SUPER_ADMIN`, `MESS_MANAGER`, `MESS_STAFF`, `WARDEN`, `AUDITOR`. Only a Super Admin can edit them. Permission keys are `resource:action` strings defined once in `@ennel/shared`. The API enforces them with `@RequirePermissions`; the UI only hides or disables controls with `<PermissionGate>`. Full matrix: `docs/rbac-matrix.md`.
 
+_Phase 2: implemented (API guards, roles page, PermissionGate, permission-aware sidebar)._
+
 ## B. Staff authentication and security: ASSUMED
 
 Separate `staff_users` table and login endpoint. Password policy (BR-AUTH-3), lockout after repeated failures, forced password change on first login, refresh-token rotation, optional per-staff TOTP 2FA, session list, "log out everywhere". The first Super Admin is created by a seed script only, never through a public endpoint.
+
+_Phase 2: implemented. Refresh token is an httpOnly cookie; TOTP is RFC 6238 with encrypted secrets._
 
 ## C. Dashboard (home): ASSUMED
 
@@ -24,9 +28,13 @@ Overview for today or a selected date: booked / expected / attended per meal; pe
 
 Manage meals, serving windows, slots (add/edit/disable), capacities (weekday defaults + per-date overrides) and availability thresholds. A slot with future bookings cannot be deleted; staff are offered a disable + reassign flow instead. Lowering capacity below current bookings shows a warning with impact counts. Every change is audited. The policy settings page edits `mess_policy` with explanations and change history.
 
+_Phase 2: implemented (meals, windows, slots, capacities, thresholds, hostels, policy). Rules: BR-MEAL-4 to BR-MEAL-6._
+
 ## E. Menu management: ASSUMED
 
 Menu per date and meal, with items tagged Veg/Non-Veg; copy from the previous week; bulk weekly editor; draft/published states. Publishing a _changed_ menu for a date that has bookings sends a "menu changed" notification to affected students.
+
+_Phase 2: implemented. Notifications are in-app for now (BR-MENU-3); push arrives with the notifications phase._
 
 ## F. Closures, holidays and special meals: ASSUMED
 
@@ -35,6 +43,8 @@ Closures for a date and one or more meals (mess closed, festival, maintenance). 
 ## G. Student and roster management: ASSUMED
 
 CSV/XLSX roster import with a validate-first preview (row errors, in-file duplicates, existing records) and a confirm step, tracked in `import_jobs`. Student list with search and filters (hostel, year, department, registered/unregistered, locked, default-booking state). Student detail page: profile, preferences, bookings, leaves, no-show counts, complaints count. Actions, each with permission, reason and audit: edit college-controlled fields, lock/unlock, reset registration or password (one-time code flow, never reveals a password), deactivate/reactivate, bulk update hostel.
+
+_Phase 2: implemented except the bookings, leaves and complaints panels on the student detail page, which fill in as those phases land. Rules: BR-ROS._
 
 ## H. Bookings management: ASSUMED
 
@@ -72,6 +82,8 @@ Daily/weekly/monthly: bookings vs attendance, no-show rate by meal/hostel, slot 
 
 Immutable `audit_logs`: actor, role, action, entity type/id, before/after, reason, IP, user agent, request ID, timestamp. Written in the same transaction as the change. Viewer with filters; export for `AUDITOR` and `SUPER_ADMIN`. No update or delete endpoint exists.
 
+_Phase 2: implemented (append-only table, viewer with filters, CSV export)._
+
 ## Q. System health: ASSUMED
 
 Background job status (last run, next run, failures with retry), attendance provider status and outage toggle, queue depth, app version and config summary.
@@ -86,29 +98,35 @@ Background job status (last run, next run, failures with retry), attendance prov
 
 Phase 0 ships the defaults below (approved by the project owner on 2026-10-19). Each one still needs institutional confirmation before launch.
 
-| #   | Item                                                                           | Default in code                                                 | Ref          |
-| --- | ------------------------------------------------------------------------------ | --------------------------------------------------------------- | ------------ |
-| 1   | Real meal timetable, breakfast window, slot capacities                         | Spec times; capacity 500 placeholder                            | Spec §18.1–2 |
-| 2   | Over-capacity booking allowed?                                                 | No                                                              | ADR-0005     |
-| 3   | Availability thresholds                                                        | Filling Fast ≥80%, Recommended ≤60% least-occupied              | ADR-0013     |
-| 4   | Veg/Non-Veg change deadline                                                    | 60 min before slot start                                        | ADR-0012     |
-| 5   | Default slot full: auto-fallback or ask                                        | Ask student                                                     | ADR-0006     |
-| 6   | Leave requires approval?                                                       | No                                                              | ADR-0007     |
-| 7   | No-show policy (30 days, warn 3, disable 5) and appeal process                 | As stated; re-enable per BR-NS-6                                | ADR-0009     |
-| 8   | Complaint privacy model                                                        | Private, identified to authorized staff                         | ADR-0008     |
-| 9   | Date exception vs weekday rule priority                                        | Date exception wins                                             | ADR-0014     |
-| 10  | Face-verification API access                                                   | Not available; mock provider                                    | —            |
-| 11  | College-controlled profile fields                                              | Ref no., name, department, year                                 | ADR-0018     |
-| 12  | Reference number format                                                        | Digits only, spaces stripped, no checksum                       | BR-AUTH-1    |
-| 13  | Email/SMS for credential reset                                                 | Not available; staff-issued one-time code                       | ADR-0019     |
-| 14  | Booking horizon                                                                | 7 days                                                          | ADR-0011     |
-| 15  | Ending leave early: earliest resume point                                      | First meal still before its cancellation deadline               | BR-LEAVE-7   |
-| 16  | Overlapping leaves                                                             | Not allowed                                                     | BR-LEAVE-2   |
-| 17  | Complaint photo limits                                                         | JPEG/PNG/HEIC/WebP, ≤5 MB, ≤3 photos                            | BR-CMP-3     |
-| 18  | Overall Default Booking OFF: cancel already-generated future default bookings? | Yes, those still before their cancellation deadline             | BR-DEF-3     |
-| 19  | Auto-fallback slot order (if enabled)                                          | Next later slot, then earlier                                   | BR-DEF-2     |
-| 20  | Forecast with short history                                                    | Low-confidence flag below 7 days; rate 1.0 with no history      | BR-FC-1      |
-| 21  | RBAC assumptions marked **?** in the matrix                                    | See `docs/rbac-matrix.md`                                       | Admin §A     |
-| 22  | Required profile fields at first-time setup                                    | Hostel block, room, student phone, parent phone; email optional | BR-ONB-2     |
-| 23  | Phone number format                                                            | 7–15 digits, optional leading `+`                               | BR-ONB-2     |
-| 24  | Login rate limits per device/IP                                                | 10/min login and register, 20/min roster check                  | BR-AUTH-8    |
+| #   | Item                                                                           | Default in code                                                   | Ref          |
+| --- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- | ------------ |
+| 1   | Real meal timetable, breakfast window, slot capacities                         | Spec times; capacity 500 placeholder                              | Spec §18.1–2 |
+| 2   | Over-capacity booking allowed?                                                 | No                                                                | ADR-0005     |
+| 3   | Availability thresholds                                                        | Filling Fast ≥80%, Recommended ≤60% least-occupied                | ADR-0013     |
+| 4   | Veg/Non-Veg change deadline                                                    | 60 min before slot start                                          | ADR-0012     |
+| 5   | Default slot full: auto-fallback or ask                                        | Ask student                                                       | ADR-0006     |
+| 6   | Leave requires approval?                                                       | No                                                                | ADR-0007     |
+| 7   | No-show policy (30 days, warn 3, disable 5) and appeal process                 | As stated; re-enable per BR-NS-6                                  | ADR-0009     |
+| 8   | Complaint privacy model                                                        | Private, identified to authorized staff                           | ADR-0008     |
+| 9   | Date exception vs weekday rule priority                                        | Date exception wins                                               | ADR-0014     |
+| 10  | Face-verification API access                                                   | Not available; mock provider                                      | —            |
+| 11  | College-controlled profile fields                                              | Ref no., name, department, year                                   | ADR-0018     |
+| 12  | Reference number format                                                        | Digits only, spaces stripped, no checksum                         | BR-AUTH-1    |
+| 13  | Email/SMS for credential reset                                                 | Not available; staff-issued one-time code                         | ADR-0019     |
+| 14  | Booking horizon                                                                | 7 days                                                            | ADR-0011     |
+| 15  | Ending leave early: earliest resume point                                      | First meal still before its cancellation deadline                 | BR-LEAVE-7   |
+| 16  | Overlapping leaves                                                             | Not allowed                                                       | BR-LEAVE-2   |
+| 17  | Complaint photo limits                                                         | JPEG/PNG/HEIC/WebP, ≤5 MB, ≤3 photos                              | BR-CMP-3     |
+| 18  | Overall Default Booking OFF: cancel already-generated future default bookings? | Yes, those still before their cancellation deadline               | BR-DEF-3     |
+| 19  | Auto-fallback slot order (if enabled)                                          | Next later slot, then earlier                                     | BR-DEF-2     |
+| 20  | Forecast with short history                                                    | Low-confidence flag below 7 days; rate 1.0 with no history        | BR-FC-1      |
+| 21  | RBAC assumptions marked **?** in the matrix                                    | See `docs/rbac-matrix.md`                                         | Admin §A     |
+| 22  | Required profile fields at first-time setup                                    | Hostel block, room, student phone, parent phone; email optional   | BR-ONB-2     |
+| 23  | Phone number format                                                            | 7–15 digits, optional leading `+`                                 | BR-ONB-2     |
+| 24  | Login rate limits per device/IP                                                | 10/min login and register, 20/min roster check                    | BR-AUTH-8    |
+| 25  | Roster entries missing from a new import file                                  | Left unchanged (deactivate students explicitly)                   | BR-ROS-4     |
+| 26  | Unknown hostel/block in a roster file                                          | Row error; hostels and blocks are created on the Hostels page     | BR-ROS-2     |
+| 27  | Staff self-protection                                                          | No self-disable/self-demotion; at least one active Super Admin    | BR-STAFF-2   |
+| 28  | Lowering slot capacity below existing bookings                                 | Allowed after an impact warning; no bookings cancelled            | BR-MEAL-6    |
+| 29  | "Menu changed" notification                                                    | In-app only, to booked students, only when published items change | BR-MENU-3    |
+| 30  | Who may manage hostels and blocks                                              | `mess-config:update` (Super Admin, Mess Manager)                  | rbac-matrix  |

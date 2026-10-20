@@ -83,11 +83,23 @@ Legend: ✓ granted · `·` not granted · **?** assumption approved for Phase 0
 
 ## Always allowed (any authenticated staff, no key)
 
-Own profile (`GET /admin/auth/me`), own password change, own TOTP enrolment, own session list, "log out everywhere".
+Own profile (`GET /admin/auth/me`), own password change, own TOTP enrolment, own session list, "log out everywhere". `GET /admin/hostels` is also open to any signed-in staff member because several pages use it for filter options; changing hostels needs `mess-config:update`.
+
+While a password change is pending (first login or after a reset), only `GET /admin/auth/me` and `POST /admin/auth/change-password` work; everything else returns `PASSWORD_CHANGE_REQUIRED`.
+
+## Routes that need more than one key or a non-obvious key (Phase 2)
+
+| Route                               | Keys                            | Why                                                                           |
+| ----------------------------------- | ------------------------------- | ----------------------------------------------------------------------------- |
+| `POST /admin/staff-users`           | `staff:manage` + `roles:manage` | A new account is created with roles, so it also needs the role-assignment key |
+| `GET /admin/roles`                  | `staff:read`                    | The staff page shows role names and their permissions                         |
+| `PUT /admin/staff-users/{id}/roles` | `roles:manage`                  | Role assignment is Super Admin only (Admin §A)                                |
+
+Account safety rules on top of permissions: staff cannot disable themselves or remove their own Super Admin role, and the last active Super Admin cannot be disabled or demoted (checked under a database lock).
 
 ## Enforcement
 
-- API: `@RequirePermissions(...keys)` on every admin route (all listed keys required). A test enumerates admin routes and fails if a route lacks the decorator.
+- API: `@AdminController` applies the staff JWT guard and a fail-closed permissions guard to every admin route. Each route declares `@RequirePermissions(...keys)` (all listed keys required), `@AuthenticatedStaffOnly()` or `@PublicAdminRoute()`; a route with none of them is refused. `admin-authorization.int.spec.ts` enumerates every admin route and checks the declaration, 401 without a token or with a student token, and 403 for a role without the key. Permissions are re-read from the database (cached 30 s, cleared on role changes), so a role change takes effect without a new login.
 - Student tokens are rejected on `/api/v1/admin/*` (different audience and secret), and staff tokens on student routes.
 - Admin UI: `<PermissionGate>` and the permission-aware sidebar are a convenience only.
 - Data scoping beyond permissions: `dashboard:read-today` limits the date to today (IST); `ANONYMOUS` complaints never return identity regardless of permission.

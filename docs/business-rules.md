@@ -16,6 +16,29 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-MEAL-1** Meals are Breakfast, Lunch and Dinner (`MealType`). Breakfast is modelled as one slot that spans its serving window (seed default 7:00–8:30 AM, to be confirmed). Lunch has 5 slots and Dinner has 7 (Spec §5.1), all from the database.
 - **BR-MEAL-2** Veg/Non-Veg is `DietType` in code. UI copy keeps the spec's wording "Meal type: Veg / Non-Veg".
 - **BR-MEAL-3** A disabled slot keeps its history but cannot receive new bookings. A slot with future bookings cannot be deleted; staff disable it and reassign (Admin §D).
+- **BR-MEAL-4** Slot integrity (Phase 2): a slot ends after it starts, lies inside its meal's serving window and does not overlap another active slot of the same meal. A serving window cannot be shrunk so that an active slot falls outside it. Breakfast keeps exactly one slot that follows its window, so it cannot get extra slots, be disabled or be deleted.
+- **BR-MEAL-5** A slot is "in use" when it has future bookings or saved choices (Default Booking preferences, Plan Ahead weekday rules or date exceptions). Disabling an in-use slot needs a target slot (active, same meal); its future bookings and saved choices move there in the same transaction. Deleting is a soft delete and is allowed only for slots not in use. Every change takes a reason when it affects students and is audited.
+- **BR-MEAL-6** Official capacity for a slot on a date resolves as: per-date override, else the weekday capacity, else the slot's default capacity. Lowering a capacity below existing bookings is allowed but the admin sees the affected dates and counts first; existing bookings are never cancelled by a capacity change.
+
+## BR-ROS: Roster import (Admin §G)
+
+- **BR-ROS-1** Import is two steps: upload (validate only, nothing changes) and confirm. Files are CSV or XLSX, ≤5 MB; headers are matched case- and spacing-insensitively and unknown columns are ignored. Required columns: reference number, full name, department, academic year.
+- **BR-ROS-2** Each row is classified: New, Update (lists changed fields), No change, Error (field-level messages) or Duplicate (the reference number appears more than once in the file). Hostel and block must both be blank or name an existing block; an unknown hostel/block is an Error, never created implicitly.
+- **BR-ROS-3** Confirm is blocked (`ROSTER_IMPORT_INVALID`) while any row is Error or Duplicate. Confirm re-checks every row against the current roster inside the transaction, so a preview that went stale cannot write outdated data. A job can be confirmed once.
+- **BR-ROS-4** Roster entries not in the file are left unchanged (no implicit deactivation). For an already registered student, college-controlled fields (BR-AUTH-7) are copied to their profile; fields students may edit are not overwritten.
+
+## BR-MENU: Menus (Admin §E)
+
+- **BR-MENU-1** A menu exists per date and meal, with items tagged Veg or Non-Veg, and is Draft until published. Students only see the published snapshot; later draft edits do not change it until the next publish.
+- **BR-MENU-2** Copy-from-previous-week and the bulk weekly editor only write drafts.
+- **BR-MENU-3** Publishing a menu whose items differ from the previously published snapshot, for a date with active bookings, sends an in-app "menu changed" notification to each booked student (once per published version). The first publish and an unchanged republish notify nobody. Push delivery arrives with the notifications phase.
+
+## BR-STAFF: Staff accounts (Admin §A/§B)
+
+- **BR-STAFF-1** New staff accounts and password resets get a random temporary password, shown once to the admin who created it; the staff member must change it at first login.
+- **BR-STAFF-2** Staff cannot disable themselves or remove their own Super Admin role, and the last active Super Admin cannot be disabled or demoted. Disabling an account revokes its sessions.
+- **BR-STAFF-3** Role and permission changes take effect on the next request (permissions are re-read, cached for at most 30 s).
+- **BR-STAFF-4** TOTP 2FA is optional per staff member: enrolment turns on only after a correct code; staff with `staff:manage` can reset another member's 2FA with a reason. TOTP secrets are stored encrypted.
 
 ## BR-BOOK: Bookings
 
@@ -124,7 +147,7 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-AUTH-3** Password policy: students min 8 chars; staff min 12 chars and not equal to their email. Lockout after 5 consecutive failures for 15 minutes (students and staff). Login is also rate-limited per IP.
 - **BR-AUTH-4** Refresh tokens rotate on every use. Reuse of a rotated token revokes the whole session family.
 - **BR-AUTH-5** Staff must change their password on first login. TOTP 2FA is optional per staff member.
-- **BR-AUTH-6** Credential reset (no email/SMS assumed): staff issue a one-time code, shown once and valid 24 h, which the student enters with their reference number to set a new password. (ADR-0019)
+- **BR-AUTH-6** Credential reset (no email/SMS assumed): staff issue a one-time code, shown once and valid 24 h, which the student enters with their reference number to set a new password. (ADR-0019) The code is 10 characters without look-alike letters/digits, stored only as a hash, allows 5 wrong attempts, and issuing a new code voids the previous one. A successful reset signs the student out everywhere. Wrong, expired and used codes all return the same error.
 - **BR-AUTH-7** College-controlled profile fields (_policy_ `collegeControlledFields`, default reference number, full name, department, academic year) are read-only for students. Hostel/block, room, phones, email and photo are editable. (ADR-0018)
 
 - **BR-AUTH-8** Login, registration, roster check and refresh are rate-limited per client IP (10, 10, 20 and 30 requests per minute). If Redis is unavailable the limiter allows the request, and account lockout (BR-AUTH-3) still applies.

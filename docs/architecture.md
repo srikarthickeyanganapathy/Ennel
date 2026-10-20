@@ -34,7 +34,7 @@ pnpm workspaces, Node 20+, TypeScript `strict: true` everywhere (`tsconfig.base.
 | Student | `/api/v1`       | `StudentJwtAuthGuard`                    | `ennel-student` / `JWT_STUDENT_SECRET` |
 | Staff   | `/api/v1/admin` | `StaffJwtAuthGuard` + `PermissionsGuard` | `ennel-staff` / `JWT_STAFF_SECRET`     |
 
-Because secrets and audiences differ, a token of one kind fails verification on the other surface (ADR-0015). Every admin route carries `@RequirePermissions(...)`; a test enumerates admin routes and fails if one lacks it.
+Because secrets and audiences differ, a token of one kind fails verification on the other surface (ADR-0015). Admin controllers use `@AdminController(path)`, which applies both guards. Every route declares `@RequirePermissions(...)`, `@AuthenticatedStaffOnly()` or `@PublicAdminRoute()`; the permissions guard refuses a route with none of them (fail closed), and `admin-authorization.int.spec.ts` enumerates every admin route to check it.
 
 ### 3.2 Layers inside each module
 
@@ -70,6 +70,9 @@ Dependencies point inward only. Admin modules reuse student domain functions (fo
 - **Rate limiting:** `@RateLimit({ name, limit, windowSeconds })` + `RateLimitGuard`, backed by a Redis fixed-window counter (`RedisRateLimiter`, fails open). Tests swap in `InMemoryRateLimiter`.
 - **Files:** `FileStorageProvider` (local disk under `STORAGE_DIR`) stores uploads under server-generated keys. `FileUrlSigner` issues HMAC-signed URLs (`FILE_SIGNING_SECRET`, 15-minute expiry) served by `GET /api/v1/files/*`. Upload types are detected from content (`detectImageType`).
 - **Student auth:** `StudentJwtAuthGuard` verifies student access tokens and sets `@CurrentStudent()`. Refresh tokens are random 256-bit values stored as SHA-256 hashes; rotation marks the old session replaced in the same transaction as the new one, so a concurrent reuse is detected.
+- **Staff auth:** `StaffJwtAuthGuard` verifies staff access tokens (claims `sid` for the session and `pwc` for a pending password change) and sets `@CurrentStaff()`. `PermissionsGuard` resolves the staff member's permissions from the database per request (`StaffPermissionsService`, 30 s cache, cleared on role changes) so a disabled account or a removed role takes effect immediately. The staff refresh token lives in an httpOnly, SameSite=Strict cookie scoped to `/api/v1/admin/auth`; the admin app keeps the access token in memory only. TOTP secrets are sealed with AES-256-GCM (`SecretBox`, `TOTP_ENCRYPTION_KEY`).
+- **Optimistic locking:** versioned records (`staff_users`, `college_roster`, `meals`, `slots`, `mess_policy`, `menus`, students) are updated with `WHERE id = ? AND version = ?`; zero rows updated → `VERSION_CONFLICT`.
+- **Audit snapshots:** `toAuditSnapshot` strips secrets (password and code hashes, TOTP secrets, token hashes) from before/after values before they reach `audit_logs`.
 - **Cross-module calls:** modules expose application services (e.g. `ListMealsService`, `GetMessPolicyService`, `SaveMealPreferencesService`). A service that takes part in another module's transaction accepts the `TransactionClient` as a parameter.
 
 ### 3.5 Booking model (ADR-0003)
@@ -97,6 +100,14 @@ Expo Router routes in `app/` are thin and render screens from `src/features/<fea
 
 `src/app/` holds the router, providers, auth guard and layout shell. Each feature has `pages/XxxPage.tsx` and `api/ hooks/ components/ types/ utils/ constants/`. `shared/components/DataTable` wraps TanStack Table in server-side mode against the common list contract. `<PermissionGate>` reads the permissions from `GET /api/v1/admin/auth/me`. It only hides or disables controls; the API is the authority.
 
+Phase 2 building blocks:
+
+- `shared/api-client`: `apiRequest` keeps the access token in memory, refreshes once on 401 through the cookie (single-flight), maps errors to `ApiError`, and `downloadFile` handles CSV/XLSX downloads.
+- `features/auth/auth-context`: `AuthProvider` restores the session on load via refresh, exposes `useAuth()` and `usePermissions()`. `app/route-guards` sends signed-out visitors to `/login`, staff with a pending password change to `/change-password`, and checks a page's permission (`RequirePermission`).
+- `shared/components`: `DataTable` (server-side pagination and sorting, column visibility, row selection, formula-safe CSV export of the visible page), `ReasonDialog` (mandatory reason for audited actions), `StatusBadge` (text + colour), `QueryStates` (loading/empty/error), `PageHeader` (breadcrumbs). Forms use native controls styled with the shared tokens; dialogs and menus use Radix.
+- `shared/lib/format`: every date and time is shown in IST with AM/PM.
+- The sidebar (`nav-items.ts`) lists only pages that exist and that the staff member may open.
+
 ### 4.3 Theme
 
 Palette (Deep Green `#0B5D46`, Soft Mint `#E7F4EC`, warning yellow, critical red), spacing and radii are tokens in `@ennel/shared` and feed both Tailwind configs (NativeWind on mobile, Tailwind + shadcn/ui on admin). Font: Inter.
@@ -104,3 +115,5 @@ Palette (Deep Green `#0B5D46`, Soft Mint `#E7F4EC`, warning yellow, critical red
 ## 5. Testing
 
 Unit tests on domain functions (highest priority) · integration tests against a real test Postgres (including a last-seat concurrency test) · an authorization suite per admin endpoint (allowed role, forbidden role → `PERMISSION_DENIED`, student token rejected) · audit tests (exactly one record per mutation, rolled back with the change) · component tests · Playwright for admin login, roster import, closure creation and appeal approval. All time-dependent tests use `FakeClock`.
+
+Phase 2 state: the authorization suite and audit tests run as API integration tests. Admin component tests cover sign-in (incl. TOTP and the forced password change), the shell, `DataTable`, `PermissionGate` and `ReasonDialog`. Playwright is not set up yet: adding it needs a new dev dependency and browser download, so it is deferred to a later phase with your approval (the admin flows were checked by hand in a browser against a separate preview database).
