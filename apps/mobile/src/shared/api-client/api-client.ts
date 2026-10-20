@@ -43,7 +43,7 @@ async function send<T>(
         options.formData ?? (options.body === undefined ? undefined : JSON.stringify(options.body)),
     });
   } catch {
-    throw ApiError.network();
+    throw ApiError.network(__DEV__ ? API_URL : undefined);
   }
 }
 

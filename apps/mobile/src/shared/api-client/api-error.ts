@@ -45,11 +45,11 @@ export class ApiError extends Error {
     );
   }
 
-  static network(): ApiError {
-    return new ApiError(
-      ClientErrorCode.NETWORK_ERROR,
-      'Check your internet connection and try again.',
-      0,
-    );
+  /** In development the message names the API address, the usual cause on a phone. */
+  static network(apiUrl?: string): ApiError {
+    const message = apiUrl
+      ? `Cannot reach the ENNEL server at ${apiUrl}. Is "pnpm dev:api" running, and is this device on the same Wi-Fi?`
+      : 'Check your internet connection and try again.';
+    return new ApiError(ClientErrorCode.NETWORK_ERROR, message, 0);
   }
 }
