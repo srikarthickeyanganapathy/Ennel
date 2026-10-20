@@ -24,7 +24,11 @@ export const phoneSchema = z
 export const profileFieldSchemas = {
   fullName: z.string().trim().min(2, 'Enter your full name').max(120),
   department: z.string().trim().min(2, 'Enter your department').max(120),
-  academicYear: z.coerce.number().int().min(1, 'Select your year').max(8),
+  academicYear: z.coerce
+    .number({ error: 'Enter the year as a number, e.g. 2' })
+    .int('Enter a whole year, e.g. 2')
+    .min(1, 'Select your year')
+    .max(8, 'The year must be 8 or less'),
   hostelBlockId: uuidSchema,
   roomNumber: z.string().trim().min(1, 'Enter your room number').max(20),
   phone: phoneSchema,
