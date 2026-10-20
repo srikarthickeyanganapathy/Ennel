@@ -14,7 +14,9 @@ export interface AppConfig {
     staffSecret: string;
     accessTtlSeconds: number;
     refreshTtlDays: number;
+    staffRefreshTtlDays: number;
   };
+  totpEncryptionKey: Buffer;
   /** Absolute path; relative values resolve against apps/api. */
   storageDir: string;
   fileSigningSecret: string;
@@ -45,7 +47,9 @@ export function parseAppConfig(source: NodeJS.ProcessEnv): AppConfig {
       staffSecret: env.JWT_STAFF_SECRET,
       accessTtlSeconds: env.JWT_ACCESS_TTL_SECONDS,
       refreshTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
+      staffRefreshTtlDays: env.STAFF_REFRESH_TOKEN_TTL_DAYS,
     },
+    totpEncryptionKey: Buffer.from(env.TOTP_ENCRYPTION_KEY, 'base64'),
     storageDir: resolve(__dirname, '../..', env.STORAGE_DIR),
     fileSigningSecret: env.FILE_SIGNING_SECRET,
     adminWebOrigin: env.ADMIN_WEB_ORIGIN,

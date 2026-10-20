@@ -13,7 +13,13 @@ export type TransactionClient = Prisma.TransactionClient;
 export class TransactionRunner {
   constructor(private readonly prisma: PrismaService) {}
 
-  run<T>(work: (tx: TransactionClient) => Promise<T>): Promise<T> {
-    return this.prisma.$transaction(work);
+  /** `timeoutMs` raises Prisma's 5-second default for bulk work such as roster imports. */
+  run<T>(
+    work: (tx: TransactionClient) => Promise<T>,
+    options: { timeoutMs?: number } = {},
+  ): Promise<T> {
+    return options.timeoutMs
+      ? this.prisma.$transaction(work, { timeout: options.timeoutMs, maxWait: 10_000 })
+      : this.prisma.$transaction(work);
   }
 }
