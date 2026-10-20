@@ -6,6 +6,7 @@ import {
   logoutRequestSchema,
   refreshRequestSchema,
   registerRequestSchema,
+  resetWithCodeRequestSchema,
   type RosterCheckResponse,
   rosterCheckRequestSchema,
 } from '@ennel/shared';
@@ -21,6 +22,7 @@ import { LoginStudentService } from '../services/login-student.service';
 import { LogoutStudentService } from '../services/logout-student.service';
 import { RefreshStudentSessionService } from '../services/refresh-student-session.service';
 import { RegisterStudentService } from '../services/register-student.service';
+import { ResetWithCodeService } from '../services/reset-with-code.service';
 
 /** Student account creation and sign-in (Spec §3 Screens 2-4, Rule 11). */
 @ApiTags('student-auth')
@@ -33,6 +35,7 @@ export class StudentAuthController {
     private readonly login: LoginStudentService,
     private readonly refresh: RefreshStudentSessionService,
     private readonly logout: LogoutStudentService,
+    private readonly resetWithCode: ResetWithCodeService,
   ) {}
 
   @Post('roster-check')
@@ -81,5 +84,17 @@ export class StudentAuthController {
     @Body(new ZodValidationPipe(logoutRequestSchema)) body: z.output<typeof refreshRequestSchema>,
   ): Promise<void> {
     await this.logout.execute(body.refreshToken);
+  }
+
+  /** ADR-0019: redeem a staff-issued one-time code. */
+  @Post('reset-with-code')
+  @HttpCode(200)
+  @RateLimit({ name: 'student-reset-code', limit: 10, windowSeconds: 60 })
+  resetPassword(
+    @Body(new ZodValidationPipe(resetWithCodeRequestSchema))
+    body: z.output<typeof resetWithCodeRequestSchema>,
+    @ClientMeta() meta: RequestClientMeta,
+  ): Promise<AuthSession> {
+    return this.resetWithCode.execute(body, meta);
   }
 }

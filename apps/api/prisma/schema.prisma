@@ -274,6 +274,7 @@ model CollegeRosterEntry {
   email           String?
   isActive        Boolean      @default(true) @map("is_active")
   lastImportJobId String?      @map("last_import_job_id") @db.Uuid
+  version         Int          @default(1)
   hostelBlock     HostelBlock? @relation(fields: [hostelBlockId], references: [id])
   lastImportJob   ImportJob?   @relation(fields: [lastImportJobId], references: [id])
   student         Student?
@@ -516,6 +517,8 @@ model Menu {
   publishedAt  DateTime?  @map("published_at") @db.Timestamptz
   /// Hash of the last published items; a different hash on publish means "menu changed".
   contentHash  String?    @map("content_hash")
+  /// Snapshot students see; drafts edit `items` without changing it until republished (Admin §E).
+  publishedItems Json?    @map("published_items")
   version      Int        @default(1)
   meal         Meal       @relation(fields: [mealId], references: [id])
   items        MenuItem[]

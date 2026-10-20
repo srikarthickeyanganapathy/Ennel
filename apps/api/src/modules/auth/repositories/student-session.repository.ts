@@ -31,6 +31,11 @@ export abstract class StudentSessionRepository {
     tx?: TransactionClient,
   ): Promise<boolean>;
   abstract revokeFamily(familyId: string, now: Date): Promise<void>;
+  abstract revokeAllForStudent(
+    studentId: string,
+    now: Date,
+    tx?: TransactionClient,
+  ): Promise<number>;
 }
 
 @Injectable()
@@ -75,5 +80,17 @@ export class PrismaStudentSessionRepository extends StudentSessionRepository {
       where: { familyId, revokedAt: null },
       data: { revokedAt: now },
     });
+  }
+
+  async revokeAllForStudent(
+    studentId: string,
+    now: Date,
+    tx: TransactionClient = this.prisma,
+  ): Promise<number> {
+    const result = await tx.studentSession.updateMany({
+      where: { studentId, revokedAt: null },
+      data: { revokedAt: now },
+    });
+    return result.count;
   }
 }

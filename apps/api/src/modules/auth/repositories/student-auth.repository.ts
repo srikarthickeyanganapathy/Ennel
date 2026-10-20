@@ -45,6 +45,12 @@ export abstract class StudentAuthRepository {
   abstract findCredentials(referenceNumber: string): Promise<StudentCredentials | null>;
   abstract findCredentialsById(id: string): Promise<StudentCredentials | null>;
   abstract saveLoginState(studentId: string, state: LoginLockState): Promise<void>;
+  abstract resetPassword(
+    studentId: string,
+    passwordHash: string,
+    clearsOnboarding: boolean,
+    tx: TransactionClient,
+  ): Promise<void>;
 }
 
 const CREDENTIAL_SELECT = {
@@ -124,5 +130,23 @@ export class PrismaStudentAuthRepository extends StudentAuthRepository {
 
   async saveLoginState(studentId: string, state: LoginLockState): Promise<void> {
     await this.prisma.student.update({ where: { id: studentId }, data: state });
+  }
+
+  async resetPassword(
+    studentId: string,
+    passwordHash: string,
+    clearsOnboarding: boolean,
+    tx: TransactionClient,
+  ): Promise<void> {
+    await tx.student.update({
+      where: { id: studentId },
+      data: {
+        passwordHash,
+        failedLoginCount: 0,
+        lockedUntil: null,
+        ...(clearsOnboarding ? { onboardingCompletedAt: null } : {}),
+        version: { increment: 1 },
+      },
+    });
   }
 }
