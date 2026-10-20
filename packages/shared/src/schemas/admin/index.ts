@@ -3,3 +3,6 @@ export * from './audit-log.schema.js';
 export * from './staff-users.schema.js';
 export * from './admin-students.schema.js';
 export * from './roster-import.schema.js';
+export * from './mess-config.schema.js';
+export * from './policy.schema.js';
+export * from './menus.schema.js';
