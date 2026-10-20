@@ -10,7 +10,9 @@ Smart mess (hostel dining) booking platform: an Expo student app, a React admin 
 | `packages/shared` | `@ennel/shared`: enums, Zod schemas, permissions, error codes, theme tokens                     |
 | `docs/`           | Spec, architecture, business rules, RBAC matrix, API contract, ADRs                             |
 
-Start with [docs/architecture.md](docs/architecture.md) and [docs/business-rules.md](docs/business-rules.md).
+**New to the project? Read [docs/GUIDE.md](docs/GUIDE.md) first**: how the pieces connect, what works today, and how to debug.
+
+For the design itself, see [docs/architecture.md](docs/architecture.md) and [docs/business-rules.md](docs/business-rules.md).
 
 ## Prerequisites
 
@@ -66,10 +68,11 @@ A student who forgot their password asks the mess office: staff issue a one-time
 
 ## Checks
 
-| Command                                      | Does                     |
-| -------------------------------------------- | ------------------------ |
-| `pnpm lint` / `pnpm typecheck` / `pnpm test` | Checks for every package |
-| `pnpm format`                                | Prettier                 |
+| Command                                      | Does                                                |
+| -------------------------------------------- | --------------------------------------------------- |
+| `pnpm lint` / `pnpm typecheck` / `pnpm test` | Checks for every package                            |
+| `pnpm format`                                | Prettier                                            |
+| `pnpm db:studio`                             | Browse the database tables at http://localhost:5555 |
 
 API tests include integration tests against `TEST_DATABASE_URL`, so `pnpm db:up` must be running before `pnpm test`.
 
