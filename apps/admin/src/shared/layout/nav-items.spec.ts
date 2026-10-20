@@ -2,20 +2,30 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_ROLE_PERMISSIONS, StaffRole } from '@ennel/shared';
 import { getVisibleNavItems } from './nav-items';
 
-describe('getVisibleNavItems', () => {
-  it('shows Mess Staff only their counter and kitchen areas', () => {
-    const granted = new Set(DEFAULT_ROLE_PERMISSIONS[StaffRole.MESS_STAFF]);
-    const labels = getVisibleNavItems(granted).map((item) => item.label);
-    expect(labels).toContain('Attendance');
-    expect(labels).toContain('Forecasting');
-    expect(labels).not.toContain('Audit log');
-    expect(labels).not.toContain('Bookings');
+const labelsFor = (role: StaffRole) =>
+  getVisibleNavItems(new Set(DEFAULT_ROLE_PERMISSIONS[role])).map((item) => item.label);
+
+describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
+  it('shows Mess Staff only what their counter and kitchen work needs', () => {
+    expect(labelsFor(StaffRole.MESS_STAFF)).toEqual([
+      'Dashboard',
+      'Menus',
+      'Mess configuration',
+      'Hostels',
+    ]);
   });
 
-  it('shows the Auditor reports and the audit log', () => {
-    const granted = new Set(DEFAULT_ROLE_PERMISSIONS[StaffRole.AUDITOR]);
-    const labels = getVisibleNavItems(granted).map((item) => item.label);
-    expect(labels).toEqual(expect.arrayContaining(['Reports', 'Audit log', 'Policy']));
-    expect(labels).not.toContain('Dashboard');
+  it('shows the Auditor policy and the audit log but not operations', () => {
+    expect(labelsFor(StaffRole.AUDITOR)).toEqual(['Policy', 'Audit log']);
+  });
+
+  it('shows Wardens students but not staff management', () => {
+    const labels = labelsFor(StaffRole.WARDEN);
+    expect(labels).toContain('Students');
+    expect(labels).not.toContain('Staff & roles');
+  });
+
+  it('shows the Super Admin everything', () => {
+    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(8);
   });
 });

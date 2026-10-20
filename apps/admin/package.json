@@ -26,6 +26,7 @@
     "react-hook-form": "^7",
     "react-router": "^7.18",
     "recharts": "^3",
+    "sonner": "^2",
     "tailwind-merge": "^3",
     "zod": "^4.6"
   },
