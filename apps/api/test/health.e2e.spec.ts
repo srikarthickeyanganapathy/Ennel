@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
+import { API_PREFIX, API_PREFIX_OPTIONS } from '../src/config/api-prefix';
 import { APP_CONFIG, parseAppConfig } from '../src/config/app-config';
 import { Clock } from '../src/infrastructure/clock/clock';
 import { FakeClock } from '../src/infrastructure/clock/fake-clock';
@@ -34,7 +35,7 @@ describe('GET /api/v1/health', () => {
       .useValue(new FakeClock('2026-10-19T05:30:00.000Z'))
       .compile();
     app = moduleRef.createNestApplication();
-    app.setGlobalPrefix('api/v1');
+    app.setGlobalPrefix(API_PREFIX, API_PREFIX_OPTIONS);
     await app.init();
   });
 
@@ -58,5 +59,14 @@ describe('GET /api/v1/health', () => {
       .set('x-request-id', 'test-request-0001')
       .expect(404);
     expect(response.body).toMatchObject({ code: 'NOT_FOUND', requestId: 'test-request-0001' });
+  });
+
+  it('answers GET / with directions instead of NOT_FOUND', async () => {
+    const response = await request(app.getHttpServer()).get('/').expect(200);
+    expect(response.body).toMatchObject({
+      name: 'ENNEL API',
+      health: '/api/v1/health',
+      apiDocs: '/api/docs',
+    });
   });
 });

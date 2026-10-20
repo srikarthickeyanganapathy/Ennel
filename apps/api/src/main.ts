@@ -3,7 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { StructuredLogger } from './common/logging/structured-logger';
-import { API_PREFIX } from './config/api-prefix';
+import { API_PREFIX, API_PREFIX_OPTIONS } from './config/api-prefix';
 import { APP_CONFIG, type AppConfig } from './config/app-config';
 
 async function bootstrap(): Promise<void> {
@@ -11,7 +11,7 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule, { logger });
   const config = app.get<AppConfig>(APP_CONFIG);
 
-  app.setGlobalPrefix(API_PREFIX);
+  app.setGlobalPrefix(API_PREFIX, API_PREFIX_OPTIONS);
   app.enableCors({ origin: config.adminWebOrigin, credentials: true });
   app.enableShutdownHooks();
 
