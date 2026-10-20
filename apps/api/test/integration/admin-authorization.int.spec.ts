@@ -80,6 +80,10 @@ describe('admin authorization (Admin §A, ADR-0015)', () => {
   let studentToken: string;
   const tokensByRole = new Map<StaffRole, string>();
   const http = () => request(ctx.app.getHttpServer());
+  const call = (method: AdminRoute['method'], path: string, token?: string) => {
+    const pending = http()[method](path);
+    return (token ? pending.set('Authorization', `Bearer ${token}`) : pending).send({});
+  };
 
   beforeAll(async () => {
     ctx = await createTestApp();
@@ -119,12 +123,9 @@ describe('admin authorization (Admin §A, ADR-0015)', () => {
   it('rejects requests without a token and with a student token on every protected route', async () => {
     for (const route of routes.filter((candidate) => !candidate.isPublic)) {
       const path = fillParams(route.path);
-      const anonymous = await http()[route.method](path).send({});
+      const anonymous = await call(route.method, path);
       expect(anonymous.status, `${route.name} without token`).toBe(401);
-      const asStudent = await http()
-        [route.method](path)
-        .set('Authorization', `Bearer ${studentToken}`)
-        .send({});
+      const asStudent = await call(route.method, path, studentToken);
       expect(asStudent.status, `${route.name} with student token`).toBe(401);
     }
   }, 120_000);
@@ -132,18 +133,12 @@ describe('admin authorization (Admin §A, ADR-0015)', () => {
   it('returns PERMISSION_DENIED to staff without the permission, including each default role that lacks it', async () => {
     for (const route of routes.filter((candidate) => candidate.required)) {
       const path = fillParams(route.path);
-      const denied = await http()
-        [route.method](path)
-        .set('Authorization', `Bearer ${noRoleToken}`)
-        .send({});
+      const denied = await call(route.method, path, noRoleToken);
       expect(denied.body.code, `${route.name} for staff without roles`).toBe('PERMISSION_DENIED');
       for (const role of Object.values(StaffRole)) {
         const granted = new Set<PermissionKey>(DEFAULT_ROLE_PERMISSIONS[role]);
         if (route.required?.every((key) => granted.has(key))) continue;
-        const response = await http()
-          [route.method](path)
-          .set('Authorization', `Bearer ${tokensByRole.get(role)}`)
-          .send({});
+        const response = await call(route.method, path, tokensByRole.get(role));
         expect(response.status, `${route.name} for ${role}`).toBe(403);
       }
     }
