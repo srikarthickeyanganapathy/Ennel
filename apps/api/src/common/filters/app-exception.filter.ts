@@ -9,6 +9,7 @@ import { ErrorCode, type ErrorResponse } from '@ennel/shared';
 import type { Response } from 'express';
 import { getRequestContext } from '../context/request-context';
 import { AppError, ERROR_HTTP_STATUS } from '../errors/app-error';
+import { ERROR_CODE_LOCAL } from '../middleware/request-context.middleware';
 
 const HTTP_STATUS_CODES: Readonly<Record<number, ErrorCode>> = {
   400: ErrorCode.VALIDATION_FAILED,
@@ -34,6 +35,7 @@ export class AppExceptionFilter implements ExceptionFilter {
     const { status, body } = this.map(exception);
     if (status >= 500) this.logger.error('Unhandled error', exception);
     const requestId = getRequestContext()?.requestId ?? 'unknown';
+    response.locals[ERROR_CODE_LOCAL] = body.code;
     response.status(status).json({ ...body, requestId } satisfies ErrorResponse);
   }
 

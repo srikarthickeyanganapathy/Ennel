@@ -21,7 +21,8 @@
     "dev:mobile": "pnpm --filter @ennel/mobile start",
     "db:migrate": "pnpm --filter @ennel/api prisma:migrate",
     "db:seed": "pnpm --filter @ennel/api seed",
-    "db:seed:dev": "pnpm --filter @ennel/api seed:dev"
+    "db:seed:dev": "pnpm --filter @ennel/api seed:dev",
+    "db:studio": "pnpm --filter @ennel/api exec prisma studio"
   },
   "devDependencies": {
     "@commitlint/cli": "^21",
