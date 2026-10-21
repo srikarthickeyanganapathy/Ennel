@@ -21,6 +21,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
 import { MessConfigModule } from './modules/mess-config/mess-config.module';
+import { SlotsModule } from './modules/slots/slots.module';
 import { StudentsModule } from './modules/students/students.module';
 
 @Module({
@@ -36,6 +37,7 @@ import { StudentsModule } from './modules/students/students.module';
     FilesModule,
     AuthModule,
     MessConfigModule,
+    SlotsModule,
     StudentsModule,
     // Staff surface (/api/v1/admin)
     AdminCoreModule,
