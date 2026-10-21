@@ -25,7 +25,8 @@ export interface ProfileDraft {
 }
 
 interface OnboardingDraftState {
-  isPrefilled: boolean;
+  /** The student whose data is in the draft; another student on this device starts fresh. */
+  prefilledFor: string | null;
   profile: ProfileDraft;
   defaultBookingEnabled: boolean;
   meals: Record<MealType, MealDraft>;
@@ -55,8 +56,11 @@ const INITIAL_MEALS: Record<MealType, MealDraft> = {
   [MealType.DINNER]: { isEnabled: false, slotId: null, dietType: DietType.VEG },
 };
 
-const INITIAL_STATE = {
-  isPrefilled: false,
+const INITIAL_STATE: Pick<
+  OnboardingDraftState,
+  'prefilledFor' | 'profile' | 'defaultBookingEnabled' | 'meals'
+> = {
+  prefilledFor: null,
   profile: EMPTY_PROFILE,
   defaultBookingEnabled: true,
   meals: INITIAL_MEALS,
@@ -65,9 +69,10 @@ const INITIAL_STATE = {
 export const useOnboardingDraft = create<OnboardingDraftState>((set, get) => ({
   ...INITIAL_STATE,
   prefill: (profile) => {
-    if (get().isPrefilled) return;
+    if (get().prefilledFor === profile.id) return;
     set({
-      isPrefilled: true,
+      ...INITIAL_STATE,
+      prefilledFor: profile.id,
       profile: {
         fullName: profile.fullName,
         department: profile.department,
