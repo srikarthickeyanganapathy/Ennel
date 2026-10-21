@@ -24,6 +24,8 @@ export class SaveSlotService {
 
   create(mealId: string, input: SlotInput): Promise<AdminSlot> {
     return this.transactions.run(async (tx) => {
+      // Lock before reading the other slots, so two parallel creates cannot both pass the overlap check.
+      await this.config.lockMeal(mealId, tx);
       const meal = await this.config.findMeal(mealId, tx);
       if (!meal) throw notFound('Meal');
       if (!canAddSlot(meal.mealType))
@@ -49,6 +51,7 @@ export class SaveSlotService {
 
   update(slotId: string, version: number, input: SlotInput, reason?: string): Promise<AdminSlot> {
     return this.transactions.run(async (tx) => {
+      if (!(await this.config.lockMealOfSlot(slotId, tx))) throw notFound('Slot');
       const before = await this.config.findSlot(slotId, tx);
       if (!before) throw notFound('Slot');
       const meal = await this.config.findMeal(before.mealId, tx);
@@ -57,6 +60,7 @@ export class SaveSlotService {
       this.assertWindow(window, before.meal, before.isActive ? others : []);
       if (!(await this.config.updateSlot(slotId, version, this.fields(window), tx)))
         throw staleVersion('slot');
+      await this.config.resequenceSlots(before.mealId, tx);
       const after = await this.config.findSlot(slotId, tx);
       if (!after) throw notFound('Slot');
       await this.audit.write(tx, {

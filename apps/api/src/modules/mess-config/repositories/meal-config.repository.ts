@@ -21,7 +21,8 @@ export class PrismaMealConfigRepository extends MealConfigRepository {
       include: {
         slots: {
           where: { isActive: true, deletedAt: null },
-          orderBy: { sortOrder: 'asc' },
+          // Serving order is by time; sortOrder breaks ties for rows saved before resequencing.
+          orderBy: [{ startMinute: 'asc' }, { sortOrder: 'asc' }],
           select: { id: true, label: true, startMinute: true, endMinute: true, sortOrder: true },
         },
       },
