@@ -19,4 +19,4 @@ export async function renderWithProviders(ui: ReactElement) {
   );
 }
 
-export { mockRouter } from '../../jest-setup';
+export { mockFocus, mockRouter } from '../../jest-setup';

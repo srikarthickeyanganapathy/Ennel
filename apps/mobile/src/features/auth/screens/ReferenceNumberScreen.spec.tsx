@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { ApiError } from '@/shared/api-client/api-error';
+import { useSessionStore } from '@/shared/store/session.store';
 import { mockRouter, renderWithProviders } from '@/test-utils/render';
 import { checkRoster } from '../api/auth-api';
 import { ReferenceNumberScreen } from './ReferenceNumberScreen';
@@ -52,5 +53,12 @@ describe('ReferenceNumberScreen (Spec §3 Screen 2)', () => {
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
     expect(await screen.findByText('Enter your college reference number')).toBeTruthy();
     expect(mockedCheckRoster).not.toHaveBeenCalled();
+  });
+
+  it('sends a signed-in student back to setup (Back from Account Created)', async () => {
+    useSessionStore.setState({ status: 'signedIn', isOnboardingComplete: false, accessToken: 't' });
+    await renderWithProviders(<ReferenceNumberScreen />);
+    expect(mockRouter.replace).toHaveBeenCalledWith('/(onboarding)/profile');
+    useSessionStore.setState({ status: 'signedOut', accessToken: null });
   });
 });

@@ -1,23 +1,18 @@
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { THEME_COLORS } from '@ennel/shared';
 import { AppButton } from '@/shared/components/AppButton';
 import { useSessionStore } from '@/shared/store/session.store';
 import { useRestoreSession } from '../hooks/use-restore-session';
-import { routeAfterSignIn } from '../utils/route-after-sign-in';
+import { useSignedInRedirect } from '../hooks/use-signed-in-redirect';
 
 /** Spec §3 Screen 1. Signed-in students skip straight to where they left off. */
 export function SplashScreen() {
   const router = useRouter();
   const status = useSessionStore((state) => state.status);
-  const isOnboardingComplete = useSessionStore((state) => state.isOnboardingComplete);
   useRestoreSession();
-
-  useEffect(() => {
-    if (status === 'signedIn') router.replace(routeAfterSignIn(isOnboardingComplete));
-  }, [status, isOnboardingComplete, router]);
+  useSignedInRedirect();
 
   return (
     <SafeAreaView className="flex-1 bg-primary">
