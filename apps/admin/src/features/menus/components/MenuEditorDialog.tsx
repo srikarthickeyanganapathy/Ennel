@@ -1,9 +1,15 @@
-import { type AdminMenu, DietType, menuItemInputSchema, type MenuItemInput } from '@ennel/shared';
+import {
+  type AdminMenu,
+  DietType,
+  menuItemInputSchema,
+  type MenuItemInput,
+  type MenuWeek,
+} from '@ennel/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { usePermissions } from '@/features/auth/auth-context';
-import { errorMessage } from '@/shared/api-client/api-error';
+import { errorMessage, isVersionConflict } from '@/shared/api-client/api-error';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dialog';
@@ -12,6 +18,9 @@ import { formatBusinessDate } from '@/shared/lib/format';
 import { publishMenu, saveMenu } from '../api/menus-api';
 
 const MEAL_NAMES = { BREAKFAST: 'Breakfast', LUNCH: 'Lunch', DINNER: 'Dinner' } as const;
+
+const replaceMenu = (entry: AdminMenu, saved: AdminMenu): AdminMenu =>
+  entry.mealDate === saved.mealDate && entry.mealType === saved.mealType ? saved : entry;
 
 /** Edit one date's meal menu as a draft, then publish (Admin §E). */
 export function MenuEditorDialog({
@@ -26,26 +35,44 @@ export function MenuEditorDialog({
   const [items, setItems] = useState<MenuItemInput[]>([]);
   const [isSpecial, setIsSpecial] = useState(false);
   const [specialTitle, setSpecialTitle] = useState('');
-  useEffect(() => {
-    if (!menu) return;
-    setItems(menu.items.length > 0 ? menu.items : [{ name: '', dietType: DietType.VEG }]);
-    setIsSpecial(menu.isSpecial);
-    setSpecialTitle(menu.specialTitle ?? '');
-  }, [menu]);
+  // The form follows the menu's identity and version, so it starts clean on every open and
+  // picks up the latest saved menu after a save or a version conflict reload.
+  const menuKey = menu ? `${menu.mealDate}|${menu.mealType}|${menu.version ?? 'new'}` : null;
+  const [syncedKey, setSyncedKey] = useState<string | null>(null);
+  if (menuKey !== syncedKey) {
+    setSyncedKey(menuKey);
+    if (menu) {
+      setItems(menu.items.length > 0 ? menu.items : [{ name: '', dietType: DietType.VEG }]);
+      setIsSpecial(menu.isSpecial);
+      setSpecialTitle(menu.specialTitle ?? '');
+    }
+  }
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['menus'] });
+  const onError = (error: Error) => {
+    if (!isVersionConflict(error)) return;
+    toast.error(`${errorMessage(error)} The latest menu has been loaded.`);
+    refresh();
+  };
 
   const validItems = items.filter((item) => menuItemInputSchema.safeParse(item).success);
+  const draft = { items: validItems, isSpecial, specialTitle: isSpecial ? specialTitle : null };
   const save = useMutation({
     mutationFn: () => {
       if (!menu) throw new Error('No menu');
       return saveMenu(menu.mealDate, menu.mealType, {
-        items: validItems,
-        isSpecial,
-        specialTitle: isSpecial ? specialTitle : null,
+        ...draft,
         version: menu.version ?? undefined,
       });
     },
-    onSuccess: () => (toast.success('Draft saved.'), refresh(), onClose()),
+    // Stay open on the saved draft so it can be published straight away.
+    onSuccess: (saved) => {
+      toast.success('Draft saved.');
+      queryClient.setQueriesData<MenuWeek>({ queryKey: ['menus'] }, (week) =>
+        week ? { ...week, menus: week.menus.map((entry) => replaceMenu(entry, saved)) } : week,
+      );
+      refresh();
+    },
+    onError,
   });
   const publish = useMutation({
     mutationFn: () => {
@@ -61,8 +88,22 @@ export function MenuEditorDialog({
       refresh();
       onClose();
     },
+    onError,
   });
-  const isDirty = menu !== null && JSON.stringify(validItems) !== JSON.stringify(menu.items);
+  const { reset: resetSave } = save;
+  const { reset: resetPublish } = publish;
+  useEffect(() => {
+    resetSave();
+    resetPublish();
+  }, [menuKey, resetSave, resetPublish]);
+  const isDirty =
+    menu !== null &&
+    JSON.stringify(draft) !==
+      JSON.stringify({
+        items: menu.items,
+        isSpecial: menu.isSpecial,
+        specialTitle: menu.isSpecial ? menu.specialTitle : null,
+      });
   const canPublish =
     menu?.id &&
     !isDirty &&

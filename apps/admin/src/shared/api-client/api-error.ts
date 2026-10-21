@@ -45,6 +45,11 @@ export class ApiError extends Error {
   }
 }
 
+/** A colleague saved the record first; the page must reload it before trying again. */
+export function isVersionConflict(error: unknown): boolean {
+  return error instanceof ApiError && error.code === 'VERSION_CONFLICT';
+}
+
 /** A readable message for any error thrown by a query or mutation. */
 export function errorMessage(error: unknown): string {
   if (error instanceof ApiError) {

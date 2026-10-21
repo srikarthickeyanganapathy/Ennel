@@ -8,10 +8,11 @@ export function renderWithProviders(ui: ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  const result = render(
+  const wrap = (element: ReactElement) => (
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter>{ui}</MemoryRouter>
-    </QueryClientProvider>,
+      <MemoryRouter>{element}</MemoryRouter>
+    </QueryClientProvider>
   );
-  return { ...result, queryClient };
+  const result = render(wrap(ui));
+  return { ...result, queryClient, rerender: (next: ReactElement) => result.rerender(wrap(next)) };
 }
