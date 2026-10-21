@@ -19,7 +19,9 @@ import {
   policyHistoryItemSchema,
   type SlotUsage,
   slotUsageSchema,
+  type Thresholds,
   type ThresholdsRequest,
+  thresholdsSchema,
   type UpdateMealRequest,
   type UpdatePolicyRequest,
   type UpdateSlotRequest,
@@ -112,6 +114,9 @@ export const getCapacityImpact = (
     query: { ...query },
     schema: capacityImpactSchema,
   });
+
+export const getThresholds = (): Promise<Thresholds> =>
+  apiRequest('/mess-config/thresholds', { schema: thresholdsSchema });
 
 export const updateThresholds = (body: ThresholdsRequest): Promise<MessPolicyView> =>
   apiRequest('/mess-config/thresholds', { method: 'PATCH', body, schema: messPolicySchema });

@@ -9,17 +9,17 @@ import { ReasonDialog } from '@/shared/components/ReasonDialog';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardHeader } from '@/shared/components/ui/card';
 import { Field, Input } from '@/shared/components/ui/form-controls';
-import { getPolicy, updateThresholds } from '../api/mess-config-api';
+import { getThresholds, updateThresholds } from '../api/mess-config-api';
+
+const THRESHOLDS_KEY = ['mess-config', 'thresholds'] as const;
 
 /** Availability label thresholds (ADR-0013), edited with mess-config:update. */
 export function ThresholdsCard() {
   const queryClient = useQueryClient();
   const can = usePermissions();
-  // The values come from GET /policy (policy:read). Mess Staff hold mess-config:read without
-  // policy:read, so querying anyway would put a permission error on their page.
-  const canRead = can('policy:read');
-  const canEdit = canRead && can('mess-config:update');
-  const policy = useQuery({ queryKey: ['policy'], queryFn: getPolicy, enabled: canRead });
+  // GET /mess-config/thresholds needs only mess-config:read, the same as this page.
+  const canEdit = can('mess-config:update');
+  const policy = useQuery({ queryKey: THRESHOLDS_KEY, queryFn: getThresholds });
   const [values, setValues] = useState({ fillingFast: '', recommended: '' });
   const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
@@ -40,17 +40,24 @@ export function ThresholdsCard() {
         version: policy.data?.version ?? 1,
       }),
     onSuccess: (updated) => {
-      queryClient.setQueryData(['policy'], updated);
+      const { fillingFastThresholdPct, recommendedMaxOccupancyPct, version } = updated;
+      queryClient.setQueryData(THRESHOLDS_KEY, {
+        fillingFastThresholdPct,
+        recommendedMaxOccupancyPct,
+        version,
+      });
+      // The policy page shows the same mess_policy row and its version.
+      void queryClient.invalidateQueries({ queryKey: ['policy'] });
       toast.success('Thresholds saved.');
       setIsSaving(false);
     },
     // The reloaded policy resets the inputs, so the next attempt starts from the latest values.
     onError: (error) => {
-      if (isVersionConflict(error)) void queryClient.invalidateQueries({ queryKey: ['policy'] });
+      if (isVersionConflict(error))
+        void queryClient.invalidateQueries({ queryKey: THRESHOLDS_KEY });
     },
   });
 
-  if (!canRead) return null;
   return (
     <Card>
       <CardHeader
