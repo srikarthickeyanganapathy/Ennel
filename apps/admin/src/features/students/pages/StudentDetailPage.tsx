@@ -101,7 +101,7 @@ export function StudentDetailPage() {
       ) : null}
       <ReasonDialog
         open={pending !== null}
-        onOpenChange={(open) => !open && setPending(null)}
+        onOpenChange={(open) => !open && (act.reset(), setPending(null))}
         title={
           pending?.kind === 'access'
             ? ACCESS_TITLES[pending.action]
