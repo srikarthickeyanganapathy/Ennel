@@ -47,19 +47,20 @@ Section 6 shows how to tell which one it is.
 
 The project is built in phases. Only Phases 0–2 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
 
-| Area                                                | Status                                                     |
-| --------------------------------------------------- | ---------------------------------------------------------- |
-| Student: register with a reference number, log in   | ✅ Works (Phase 1)                                         |
-| Student: first-time setup (profile, hostel, meals)  | ✅ Works (Phase 1)                                         |
-| Student: reset password with a code from the office | ✅ Works (Phase 2)                                         |
-| Student: **Home tab**                               | ⏳ Placeholder screen. Booking meals arrives in Phases 3–4 |
-| Student: bookings, leave, no-shows, complaints      | ⏳ Phases 4–10                                             |
-| Admin: sign in, change password, 2FA, sessions      | ✅ Works (Phase 2)                                         |
-| Admin: Staff & roles, Audit log                     | ✅ Works (Phase 2)                                         |
-| Admin: Students, Import roster, reset codes         | ✅ Works (Phase 2)                                         |
-| Admin: Mess configuration, Hostels, Policy, Menus   | ✅ Works (Phase 2)                                         |
-| Admin: **Dashboard** home page                      | ⏳ Placeholder. Counts and charts need bookings (Phase 4)  |
-| Admin: bookings, attendance, leaves, complaints...  | ⏳ Phases 4–11 (not in the sidebar yet)                    |
+| Area                                                            | Status                                                                                   |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Student: register with a reference number, log in               | ✅ Works (Phase 1)                                                                       |
+| Student: first-time setup (profile, hostel, meals)              | ✅ Works (Phase 1)                                                                       |
+| Student: reset password with a code from the office             | ✅ Works (Phase 2)                                                                       |
+| Student: **slot availability** (Home → Check slot availability) | ✅ Works (Phase 3): live counts and labels; booking from it arrives in Phase 4           |
+| Student: **Home tab**                                           | ⏳ Placeholder plus the availability card. The full Home with booking arrives in Phase 4 |
+| Student: bookings, leave, no-shows, complaints                  | ⏳ Phases 4–10                                                                           |
+| Admin: sign in, change password, 2FA, sessions                  | ✅ Works (Phase 2)                                                                       |
+| Admin: Staff & roles, Audit log                                 | ✅ Works (Phase 2)                                                                       |
+| Admin: Students, Import roster, reset codes                     | ✅ Works (Phase 2)                                                                       |
+| Admin: Mess configuration, Hostels, Policy, Menus               | ✅ Works (Phase 2)                                                                       |
+| Admin: **Dashboard** home page                                  | ⏳ Placeholder. Counts and charts need bookings (Phase 4)                                |
+| Admin: bookings, attendance, leaves, complaints...              | ⏳ Phases 4–11 (not in the sidebar yet)                                                  |
 
 ---
 

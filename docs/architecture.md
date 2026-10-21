@@ -84,7 +84,7 @@ Student intent lives in three separate tables that never overwrite each other (R
 
 ### 3.6 Modules
 
-Student-facing: `auth`, `students`, `mess-config`, `menus`, `bookings`, `default-preferences`, `plan-ahead`, `leaves`, `no-shows`, `attendance`, `complaints`, `notifications`, `jobs`.
+Student-facing: `auth`, `students`, `mess-config`, `slots` (live availability, Phase 3), `menus`, `bookings`, `default-preferences`, `plan-ahead`, `leaves`, `no-shows`, `attendance`, `complaints`, `notifications`, `jobs`.
 Staff-facing (under `modules/admin/`): `admin-auth`, `staff-users`, `rbac`, `audit-log`, `admin-dashboard`, `admin-mess-config`, `admin-menus`, `admin-closures`, `admin-students`, `admin-bookings`, `admin-attendance`, `admin-no-shows`, `admin-leaves`, `admin-complaints`, `admin-announcements`, `admin-forecasting`, `admin-reports`, `admin-system`.
 
 ### 3.7 Background jobs (BullMQ, `modules/jobs`)
@@ -95,7 +95,7 @@ Staff-facing (under `modules/admin/`): `admin-auth`, `staff-users`, `rbac`, `aud
 
 ### 4.1 Mobile (`apps/mobile`)
 
-Expo Router routes in `app/` are thin and render screens from `src/features/<feature>/`. Route groups: `(auth)` (Screens 2–4 and Login), `(onboarding)` (Screens 5–8, needs a session), `(tabs)` (needs completed onboarding). `apiRequest` adds the access token, refreshes once on 401 (single-flight, because refresh tokens are single-use) and maps errors to `ApiError`. Forms use React Hook Form with the shared Zod schemas. `useSubmitLock` blocks double submits synchronously. The onboarding draft lives in a Zustand store so Back/Edit never loses entries. Each feature has `components/ hooks/ api/ types/ utils/ constants/`. Server state uses TanStack Query; Zustand holds session and UI state only; tokens live in SecureStore. The client holds no business rules: the API returns deadlines (`cancellationDeadlineAt`, `changeSlotDeadlineAt`) plus `canCancel` / `canChangeSlot` and a `disabledReason`, and the app renders them.
+Expo Router routes in `app/` are thin and render screens from `src/features/<feature>/`. Route groups: `(auth)` (Screens 2–4 and Login), `(onboarding)` (Screens 5–8, needs a session), `(tabs)` (needs completed onboarding), `(student)` (signed-in screens outside the tab bar, e.g. Slot Selection). `apiRequest` adds the access token, refreshes once on 401 (single-flight, because refresh tokens are single-use) and maps errors to `ApiError`. Forms use React Hook Form with the shared Zod schemas. `useSubmitLock` blocks double submits synchronously. The onboarding draft lives in a Zustand store so Back/Edit never loses entries. Each feature has `components/ hooks/ api/ types/ utils/ constants/`. Server state uses TanStack Query; Zustand holds session and UI state only; tokens live in SecureStore. The client holds no business rules: the API returns deadlines (`cancellationDeadlineAt`, `changeSlotDeadlineAt`) plus `canCancel` / `canChangeSlot` and a `disabledReason`, and the app renders them.
 
 ### 4.2 Admin (`apps/admin`)
 

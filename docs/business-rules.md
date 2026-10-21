@@ -91,6 +91,7 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 
   Additionally, `RECOMMENDED` marks the active slot with the lowest occupancy for that meal/date, provided it is ≤ `recommendedMaxOccupancyPct` (_policy_, default **60**). Ties go to the earlier slot. It never changes the student's choice (Spec §5.1).
 
+- **BR-CAP-7 Slot Selection** (Phase 3, ADR-0020): seats in use are `BOOKED`, `COMPLETED` and `NO_SHOW` bookings. A slot can be chosen unless the meal is closed that day, the slot has already started (today only, BR-DEAD-5), or it is at capacity while `allowOverCapacityBooking` is off. `RECOMMENDED` is given only to a choosable, not-full slot when at least two exist. Occupancy % is rounded down for display. Dates outside today … today + `bookingHorizonDays` (inclusive) return `BOOKING_NOT_ALLOWED`.
 - **BR-CAP-6** Lowering a capacity below current bookings is allowed after the admin sees a warning with impact counts. Existing bookings are kept and become over-capacity (Admin §D).
 
 ## BR-DEF: Default Booking generation and full-slot fallback
