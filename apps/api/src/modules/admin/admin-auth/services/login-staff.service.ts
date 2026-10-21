@@ -41,13 +41,15 @@ export class LoginStaffService {
     assertCanAttempt(member, now);
     if (!(await verify(member.passwordHash, password))) await this.handleFailure(member, now);
 
-    await this.staff.saveLoginState(member.id, recordSuccessfulLogin());
+    // With 2FA the counter is cleared only once the code is correct: resetting it here would let
+    // anyone who knows the password retry TOTP codes forever (BR-AUTH-3).
     if (member.totpEnabled) {
       return {
         status: 'TOTP_REQUIRED',
         challengeToken: await this.tokens.signTotpChallenge(member.id),
       };
     }
+    await this.staff.saveLoginState(member.id, recordSuccessfulLogin());
     const issued = await this.issuer.issue({
       staffId: member.id,
       mustChangePassword: member.mustChangePassword,
