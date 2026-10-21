@@ -7,6 +7,7 @@ import {
   type RosterCheckRequest,
   type RosterCheckResponse,
 } from '@ennel/shared';
+import { useOnboardingDraft } from '@/features/onboarding/store/onboarding-draft.store';
 import { type ApiError } from '@/shared/api-client/api-error';
 import { useSessionStore } from '@/shared/store/session.store';
 import { readRefreshToken } from '@/shared/store/token-storage';
@@ -51,6 +52,7 @@ export function useResetWithCode() {
 /** Spec §9 Logout. The local session ends even if the server cannot be reached. */
 export function useLogout() {
   const signOut = useSessionStore((state) => state.signOut);
+  const resetOnboardingDraft = useOnboardingDraft((state) => state.reset);
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
@@ -59,6 +61,8 @@ export function useLogout() {
     },
     onSettled: async () => {
       queryClient.clear();
+      // An unfinished setup must not show up for the next student on this device.
+      resetOnboardingDraft();
       await signOut();
     },
   });

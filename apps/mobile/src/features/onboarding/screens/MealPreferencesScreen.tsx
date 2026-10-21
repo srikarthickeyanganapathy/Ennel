@@ -10,6 +10,7 @@ import { ToggleRow } from '@/shared/components/ToggleRow';
 import { MealPreferenceCard } from '../components/MealPreferenceCard';
 import { useMeals } from '../hooks/use-onboarding-queries';
 import { useOnboardingDraft } from '../store/onboarding-draft.store';
+import { slotChoiceError } from '../utils/meal-slot-choice';
 
 /** Spec §3 Screen 7: required first-time Default Booking setup. */
 export function MealPreferencesScreen() {
@@ -25,14 +26,12 @@ export function MealPreferencesScreen() {
 
   const onContinue = () => {
     // Convenience check only; the API validates slots against the live configuration.
-    const missing = (meals.data ?? []).filter((meal) => {
-      const draft = drafts[meal.mealType];
-      return draft.isEnabled && meal.slots.length > 1 && !draft.slotId;
+    const found = (meals.data ?? []).flatMap((meal) => {
+      const error = slotChoiceError(meal, drafts[meal.mealType]);
+      return error ? [[meal.mealType, error] as const] : [];
     });
-    setSlotErrors(
-      Object.fromEntries(missing.map((meal) => [meal.mealType, 'Choose a slot for this meal'])),
-    );
-    if (missing.length === 0) router.push('/(onboarding)/review');
+    setSlotErrors(Object.fromEntries(found));
+    if (found.length === 0) router.push('/(onboarding)/review');
   };
 
   return (

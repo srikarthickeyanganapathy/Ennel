@@ -11,6 +11,7 @@ import { Screen } from '@/shared/components/Screen';
 import { StepHeader } from '@/shared/components/StepHeader';
 import { TextField } from '@/shared/components/TextField';
 import { useRosterCheck } from '../hooks/use-auth-mutations';
+import { useSignedInRedirect } from '../hooks/use-signed-in-redirect';
 
 type FormInput = z.input<typeof rosterCheckRequestSchema>;
 type FormOutput = z.output<typeof rosterCheckRequestSchema>;
@@ -20,6 +21,7 @@ export function ReferenceNumberScreen() {
   const router = useRouter();
   const rosterCheck = useRosterCheck();
   const lock = useSubmitLock();
+  useSignedInRedirect();
   const { control, handleSubmit, formState } = useForm<FormInput, unknown, FormOutput>({
     resolver: zodResolver(rosterCheckRequestSchema),
     defaultValues: { referenceNumber: '' },

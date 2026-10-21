@@ -1,3 +1,5 @@
+import type React from 'react';
+
 // In-memory SecureStore so token persistence runs in tests.
 const mockSecureStore = new Map<string, string>();
 jest.mock('expo-secure-store', () => ({
@@ -14,14 +16,25 @@ export const mockRouter = {
   push: jest.fn(),
   replace: jest.fn(),
   navigate: jest.fn(),
+  dismissTo: jest.fn(),
   back: jest.fn(),
 };
 
-jest.mock('expo-router', () => ({
-  useRouter: () => mockRouter,
-  useLocalSearchParams: jest.fn(() => ({})),
-  Redirect: () => null,
-}));
+/** Whether the screen under test is the focused route; set false to model a screen under the stack. */
+export const mockFocus = { isFocused: true };
+
+jest.mock('expo-router', () => {
+  const { useEffect } = jest.requireActual<typeof React>('react');
+  return {
+    useRouter: () => mockRouter,
+    useLocalSearchParams: jest.fn(() => ({})),
+    useFocusEffect: (effect: () => void) =>
+      useEffect(() => {
+        if (mockFocus.isFocused) effect();
+      }, [effect]),
+    Redirect: () => null,
+  };
+});
 
 jest.mock('expo-image-picker', () => ({
   requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
@@ -30,5 +43,6 @@ jest.mock('expo-image-picker', () => ({
 
 beforeEach(() => {
   mockSecureStore.clear();
+  mockFocus.isFocused = true;
   Object.values(mockRouter).forEach((fn) => fn.mockReset());
 });

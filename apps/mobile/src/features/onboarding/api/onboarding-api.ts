@@ -29,15 +29,21 @@ export interface PickedPhoto {
   uri: string;
   mimeType: string;
   fileName: string;
+  /** Web only: the browser File, since a browser FormData cannot read a { uri } descriptor. */
+  file?: Blob;
 }
 
 export function uploadProfilePhoto(photo: PickedPhoto): Promise<StudentProfile> {
   const formData = new FormData();
-  // React Native's FormData accepts a { uri, name, type } descriptor for files.
-  formData.append('photo', {
-    uri: photo.uri,
-    name: photo.fileName,
-    type: photo.mimeType,
-  } as unknown as Blob);
+  if (photo.file) {
+    formData.append('photo', photo.file, photo.fileName);
+  } else {
+    // React Native's FormData accepts a { uri, name, type } descriptor for files.
+    formData.append('photo', {
+      uri: photo.uri,
+      name: photo.fileName,
+      type: photo.mimeType,
+    } as unknown as Blob);
+  }
   return apiRequest('/api/v1/me/photo', { method: 'PUT', formData, schema: studentProfileSchema });
 }

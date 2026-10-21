@@ -4,6 +4,7 @@ import { OptionList } from '@/shared/components/OptionList';
 import { SegmentedControl } from '@/shared/components/SegmentedControl';
 import { ToggleRow } from '@/shared/components/ToggleRow';
 import { type MealDraft } from '../store/onboarding-draft.store';
+import { isSlotAutoFilled } from '../utils/meal-slot-choice';
 
 const DIET_OPTIONS = [
   { value: DietType.VEG, label: 'Veg' },
@@ -19,7 +20,7 @@ interface MealPreferenceCardProps {
 
 /** One meal's recurring preference (Spec §3 Screen 7). */
 export function MealPreferenceCard({ meal, draft, onChange, error }: MealPreferenceCardProps) {
-  const hasSingleWindow = meal.slots.length === 1;
+  const hasSingleWindow = isSlotAutoFilled(meal);
   return (
     <View className="mb-4 rounded-lg border border-border bg-background p-4">
       <ToggleRow
