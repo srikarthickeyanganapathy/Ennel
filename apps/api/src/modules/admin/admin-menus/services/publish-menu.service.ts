@@ -39,23 +39,22 @@ export class PublishMenuService {
     return this.transactions.run(async (tx) => {
       const menu = await this.menus.findById(menuId, tx);
       if (!menu) throw new AppError(ErrorCode.NOT_FOUND, 'Menu not found.');
-      if (menu.version !== version) {
-        throw new AppError(
-          ErrorCode.VERSION_CONFLICT,
-          'Someone else changed this menu. Reload and try again.',
-        );
-      }
+      if (menu.version !== version) throw staleMenu();
       if (menu.items.length === 0)
         throw new AppError(ErrorCode.VALIDATION_FAILED, 'Add at least one dish before publishing.');
 
       const contentHash = hashMenuContent(menu);
       const isChanged = isPublishedChange(menu.contentHash, contentHash);
-      await this.menus.publish(
+      // Conditional on the version read above, so a draft saved meanwhile is never published
+      // under a snapshot of the older items.
+      const isPublished = await this.menus.publish(
         menuId,
+        version,
         { contentHash, items: menu.items, publishedAt: this.clock.now() },
         tx,
       );
-      const notifiedStudents = isChanged ? await this.notifyBooked(menu, contentHash, tx) : 0;
+      if (!isPublished) throw staleMenu();
+      const notifiedStudents = isChanged ? await this.notifyBooked(menu, version + 1, tx) : 0;
       await this.audit.write(tx, {
         action: 'menu.publish',
         entityType: 'menu',
@@ -69,9 +68,13 @@ export class PublishMenuService {
     });
   }
 
+  /**
+   * BR-MENU-3: once per published version. Keying on the version rather than the content means
+   * switching back to an earlier menu (A → B → A) still tells students it changed.
+   */
   private async notifyBooked(
     menu: StoredMenu,
-    contentHash: string,
+    publishedVersion: number,
     tx: Parameters<NotifyStudentsService['notifyWithin']>[0],
   ): Promise<number> {
     const studentIds = await this.menus.bookedStudentIds(menu.mealDate, menu.mealId, tx);
@@ -82,7 +85,14 @@ export class PublishMenuService {
       body: `The ${MEAL_NAMES[menu.mealType].toLowerCase()} menu for ${formatDay(menu.mealDate)} has been updated.`,
       relatedEntityType: 'menu',
       relatedEntityId: menu.id,
-      dedupeKey: `menu-changed:${menu.id}:${contentHash}`,
+      dedupeKey: `menu-changed:${menu.id}:v${publishedVersion}`,
     });
   }
+}
+
+function staleMenu(): AppError {
+  return new AppError(
+    ErrorCode.VERSION_CONFLICT,
+    'Someone else changed this menu. Reload and try again.',
+  );
 }

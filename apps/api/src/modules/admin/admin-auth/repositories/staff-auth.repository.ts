@@ -3,6 +3,7 @@ import { type Prisma, type StaffStatus } from '../../../../generated/prisma/clie
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import { type TransactionClient } from '../../../../infrastructure/database/transaction-runner';
 import { type LoginLockState } from '../../../auth/domain/login-lockout';
+import { type LoginLockStore } from '../../../auth/services/record-login-failure';
 
 export interface StaffCredentials extends LoginLockState {
   id: string;
@@ -16,10 +17,16 @@ export interface StaffCredentials extends LoginLockState {
   totpSecretEnc: string | null;
 }
 
-export abstract class StaffAuthRepository {
+export abstract class StaffAuthRepository implements LoginLockStore {
   abstract findByEmail(email: string): Promise<StaffCredentials | null>;
   abstract findById(id: string): Promise<StaffCredentials | null>;
   abstract saveLoginState(staffId: string, state: LoginLockState): Promise<void>;
+  abstract readLockState(staffId: string): Promise<LoginLockState | null>;
+  abstract replaceLockState(
+    staffId: string,
+    expected: LoginLockState,
+    next: LoginLockState,
+  ): Promise<boolean>;
   abstract setPassword(
     staffId: string,
     passwordHash: string,
@@ -74,6 +81,29 @@ export class PrismaStaffAuthRepository extends StaffAuthRepository {
 
   async saveLoginState(staffId: string, state: LoginLockState): Promise<void> {
     await this.prisma.staffUser.update({ where: { id: staffId }, data: state });
+  }
+
+  readLockState(staffId: string): Promise<LoginLockState | null> {
+    return this.prisma.staffUser.findUnique({
+      where: { id: staffId },
+      select: { failedLoginCount: true, lockedUntil: true },
+    });
+  }
+
+  async replaceLockState(
+    staffId: string,
+    expected: LoginLockState,
+    next: LoginLockState,
+  ): Promise<boolean> {
+    const result = await this.prisma.staffUser.updateMany({
+      where: {
+        id: staffId,
+        failedLoginCount: expected.failedLoginCount,
+        lockedUntil: expected.lockedUntil,
+      },
+      data: next,
+    });
+    return result.count === 1;
   }
 
   async setPassword(

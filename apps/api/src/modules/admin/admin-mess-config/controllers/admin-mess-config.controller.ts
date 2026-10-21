@@ -20,6 +20,7 @@ import {
   capacityOverrideRequestSchema,
   createSlotRequestSchema,
   disableSlotRequestSchema,
+  ErrorCode,
   type MessPolicyView,
   reasonRequestSchema,
   type SlotUsage,
@@ -37,6 +38,7 @@ import {
   type AuthenticatedStaff,
   CurrentStaff,
 } from '../../../../common/decorators/current-staff.decorator';
+import { AppError } from '../../../../common/errors/app-error';
 import { ZodValidationPipe } from '../../../../common/pipes/zod-validation.pipe';
 import { GetMessConfigService } from '../services/get-mess-config.service';
 import { PolicySettingsService } from '../services/policy-settings.service';
@@ -108,11 +110,12 @@ export class AdminMessConfigController {
   @HttpCode(200)
   @RequirePermissions('mess-config:update')
   disable(
+    @CurrentStaff() staff: AuthenticatedStaff,
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(disableSlotRequestSchema))
     body: z.output<typeof disableSlotRequestSchema>,
   ): Promise<AdminSlot> {
-    return this.lifecycle.disable(id, body.reason, body.reassignToSlotId);
+    return this.lifecycle.disable({ slotId: id, ...body, staffId: staff.id });
   }
 
   @Post('slots/:id/enable')
@@ -204,8 +207,21 @@ export class AdminMessConfigController {
   }
 }
 
+/** A WEEKDAY or DATE check without its weekday or date would silently report another scope. */
 function toScope(query: z.output<typeof capacityImpactQuerySchema>): CapacityScope {
-  if (query.scope === 'WEEKDAY') return { scope: 'WEEKDAY', weekday: query.weekday ?? 0 };
-  if (query.scope === 'DATE' && query.date) return { scope: 'DATE', date: query.date };
+  if (query.scope === 'WEEKDAY') {
+    if (query.weekday === undefined) throw missingQuery('weekday');
+    return { scope: 'WEEKDAY', weekday: query.weekday };
+  }
+  if (query.scope === 'DATE') {
+    if (!query.date) throw missingQuery('date');
+    return { scope: 'DATE', date: query.date };
+  }
   return { scope: 'DEFAULT' };
+}
+
+function missingQuery(path: 'weekday' | 'date'): AppError {
+  return new AppError(ErrorCode.VALIDATION_FAILED, 'The request is invalid.', {
+    issues: [{ path, message: `Required for this scope` }],
+  });
 }

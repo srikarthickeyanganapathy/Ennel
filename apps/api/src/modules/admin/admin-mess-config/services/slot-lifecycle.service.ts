@@ -2,11 +2,25 @@ import { Injectable } from '@nestjs/common';
 import { type AdminSlot, ErrorCode, type SlotUsage, toBusinessDate } from '@ennel/shared';
 import { AppError } from '../../../../common/errors/app-error';
 import { Clock } from '../../../../infrastructure/clock/clock';
-import { TransactionRunner } from '../../../../infrastructure/database/transaction-runner';
+import {
+  type TransactionClient,
+  TransactionRunner,
+} from '../../../../infrastructure/database/transaction-runner';
 import { AuditWriter } from '../../audit-log/services/audit-writer.service';
 import { findSlotWindowProblem, isSlotInUse } from '../domain/slot-rules';
-import { AdminMessConfigRepository } from '../repositories/admin-mess-config.repository';
+import {
+  AdminMessConfigRepository,
+  type SlotWithMeal,
+} from '../repositories/admin-mess-config.repository';
 import { invalid, notFound } from './config-errors';
+
+export interface DisableSlotCommand {
+  slotId: string;
+  reason: string;
+  reassignToSlotId?: string;
+  /** The staff member, recorded on bookings that are moved (Admin §H). */
+  staffId: string;
+}
 
 /**
  * Disable, re-enable and delete slots (Admin §D). A slot that still has future bookings or
@@ -25,17 +39,17 @@ export class SlotLifecycleService {
     return this.config.slotUsage(slotId, toBusinessDate(this.clock.now()));
   }
 
-  disable(slotId: string, reason: string, reassignToSlotId?: string): Promise<AdminSlot> {
+  disable(command: DisableSlotCommand): Promise<AdminSlot> {
+    const { slotId, reason, reassignToSlotId } = command;
     const today = toBusinessDate(this.clock.now());
     return this.transactions.run(async (tx) => {
-      const slot = await this.config.findSlot(slotId, tx);
-      if (!slot) throw notFound('Slot');
+      const slot = await this.lockAndFind(slotId, tx);
       if (!slot.isActive) throw invalid('slotId', 'This slot is already disabled.');
       if (slot.mealType === 'BREAKFAST')
         throw invalid('slotId', 'Breakfast always has its one serving window.');
       const usage = await this.config.slotUsage(slotId, today, tx);
       const moved = isSlotInUse(usage)
-        ? await this.reassign(slot, usage, today, reassignToSlotId, tx)
+        ? await this.reassign(slot, usage, today, command, tx)
         : null;
       await this.config.setSlotActive(slotId, false, tx);
       await this.audit.write(tx, {
@@ -52,8 +66,7 @@ export class SlotLifecycleService {
 
   enable(slotId: string, reason: string): Promise<AdminSlot> {
     return this.transactions.run(async (tx) => {
-      const slot = await this.config.findSlot(slotId, tx);
-      if (!slot) throw notFound('Slot');
+      const slot = await this.lockAndFind(slotId, tx);
       const meal = await this.config.findMeal(slot.mealId, tx);
       const others = (meal?.slots ?? []).filter((other) => other.isActive && other.id !== slotId);
       const problem = findSlotWindowProblem(slot, slot.meal, others);
@@ -73,8 +86,7 @@ export class SlotLifecycleService {
   delete(slotId: string, reason: string): Promise<void> {
     const today = toBusinessDate(this.clock.now());
     return this.transactions.run(async (tx) => {
-      const slot = await this.config.findSlot(slotId, tx);
-      if (!slot) throw notFound('Slot');
+      const slot = await this.lockAndFind(slotId, tx);
       if (slot.mealType === 'BREAKFAST')
         throw invalid('slotId', 'Breakfast always has its one serving window.');
       const usage = await this.config.slotUsage(slotId, today, tx);
@@ -96,13 +108,22 @@ export class SlotLifecycleService {
     });
   }
 
+  /** Locks the slot's meal before reading, so the checks below see parallel changes (BR-MEAL-5). */
+  private async lockAndFind(slotId: string, tx: TransactionClient): Promise<SlotWithMeal> {
+    if (!(await this.config.lockMealOfSlot(slotId, tx))) throw notFound('Slot');
+    const slot = await this.config.findSlot(slotId, tx);
+    if (!slot) throw notFound('Slot');
+    return slot;
+  }
+
   private async reassign(
     slot: AdminSlot,
     usage: SlotUsage,
     today: string,
-    targetId: string | undefined,
-    tx: Parameters<AdminMessConfigRepository['reassignSlot']>[3],
+    command: DisableSlotCommand,
+    tx: TransactionClient,
   ) {
+    const targetId = command.reassignToSlotId;
     if (!targetId) {
       throw new AppError(
         ErrorCode.VALIDATION_FAILED,
@@ -114,13 +135,11 @@ export class SlotLifecycleService {
     if (!target || target.mealId !== slot.mealId || !target.isActive || target.id === slot.id) {
       throw invalid('reassignToSlotId', 'Choose another active slot of the same meal.');
     }
-    return this.config.reassignSlot(slot.id, targetId, today, tx);
+    const actor = { staffId: command.staffId, reason: command.reason };
+    return this.config.reassignSlot(slot.id, targetId, today, actor, tx);
   }
 
-  private async requireSlot(
-    slotId: string,
-    tx: Parameters<AdminMessConfigRepository['findSlot']>[1],
-  ): Promise<AdminSlot> {
+  private async requireSlot(slotId: string, tx: TransactionClient): Promise<AdminSlot> {
     const slot = await this.config.findSlot(slotId, tx);
     if (!slot) throw notFound('Slot');
     return slot;

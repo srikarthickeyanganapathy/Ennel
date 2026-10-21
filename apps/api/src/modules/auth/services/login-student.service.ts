@@ -3,11 +3,12 @@ import { type AuthSession, ErrorCode } from '@ennel/shared';
 import { hash, verify } from 'argon2';
 import { AppError } from '../../../common/errors/app-error';
 import { Clock } from '../../../infrastructure/clock/clock';
-import { isLockedOut, recordFailedLogin, recordSuccessfulLogin } from '../domain/login-lockout';
+import { isLockedOut, recordSuccessfulLogin } from '../domain/login-lockout';
 import {
   type StudentCredentials,
   StudentAuthRepository,
 } from '../repositories/student-auth.repository';
+import { recordLoginFailure } from './record-login-failure';
 import { type ClientMeta, StudentSessionIssuer } from './student-session-issuer.service';
 
 export interface LoginStudentCommand {
@@ -64,8 +65,7 @@ export class LoginStudentService {
   }
 
   private async handleFailure(student: StudentCredentials, now: Date): Promise<never> {
-    const next = recordFailedLogin(student, now);
-    await this.students.saveLoginState(student.id, next);
+    const next = await recordLoginFailure(this.students, student.id, student, now);
     if (isLockedOut(next, now)) {
       throw new AppError(ErrorCode.ACCOUNT_LOCKED, 'Too many failed attempts. Try again later.', {
         lockedUntil: next.lockedUntil?.toISOString(),

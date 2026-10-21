@@ -279,9 +279,16 @@ export class PrismaAdminStudentsRepository extends AdminStudentsRepository {
   ): Promise<RosterTarget | null> {
     const row = await tx.collegeRosterEntry.findUnique({
       where: { id: rosterEntryId },
-      include: { student: { select: { id: true, status: true } } },
+      include: {
+        student: {
+          select: { id: true, status: true, hostelBlockId: true, roomNumber: true, email: true },
+        },
+      },
     });
     if (!row) return null;
+    // A registered student may have edited hostel, room and email (BR-AUTH-7); those are the
+    // values staff see and replace, so the audit "before" must show them, not the roster's.
+    const editable = row.student ?? row;
     return {
       rosterEntryId: row.id,
       studentId: row.student?.id ?? null,
@@ -293,9 +300,9 @@ export class PrismaAdminStudentsRepository extends AdminStudentsRepository {
         fullName: row.fullName,
         department: row.department,
         academicYear: row.academicYear,
-        hostelBlockId: row.hostelBlockId,
-        roomNumber: row.roomNumber,
-        email: row.email,
+        hostelBlockId: editable.hostelBlockId,
+        roomNumber: editable.roomNumber,
+        email: editable.email,
       },
     };
   }

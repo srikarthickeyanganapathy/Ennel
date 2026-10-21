@@ -3,11 +3,8 @@ import { ErrorCode } from '@ennel/shared';
 import { AppError } from '../../../../common/errors/app-error';
 import { Clock } from '../../../../infrastructure/clock/clock';
 import { SecretBox } from '../../../../infrastructure/crypto/secret-box';
-import {
-  recordFailedLogin,
-  isLockedOut,
-  recordSuccessfulLogin,
-} from '../../../auth/domain/login-lockout';
+import { isLockedOut, recordSuccessfulLogin } from '../../../auth/domain/login-lockout';
+import { recordLoginFailure } from '../../../auth/services/record-login-failure';
 import { type ClientMeta } from '../../../auth/services/student-session-issuer.service';
 import { verifyTotp } from '../domain/totp';
 import { StaffAuthRepository } from '../repositories/staff-auth.repository';
@@ -39,8 +36,7 @@ export class VerifyTotpLoginService {
     const now = this.clock.now();
     assertCanAttempt(member, now);
     if (!verifyTotp(this.secretBox.open(member.totpSecretEnc), code, now)) {
-      const next = recordFailedLogin(member, now);
-      await this.staff.saveLoginState(member.id, next);
+      const next = await recordLoginFailure(this.staff, member.id, member, now);
       throw new AppError(
         isLockedOut(next, now) ? ErrorCode.ACCOUNT_LOCKED : ErrorCode.INVALID_CREDENTIALS,
         'The code is incorrect or expired.',

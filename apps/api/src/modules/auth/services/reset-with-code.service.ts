@@ -73,10 +73,14 @@ export class ResetWithCodeService {
     code: string,
     now: Date,
   ): Promise<void> {
-    if (!ticket || !isTicketUsable(ticket, now))
+    const isUsable =
+      ticket !== null &&
+      isTicketUsable(ticket, now) &&
+      (await this.tickets.claimAttempt(ticket.id, now));
+    if (!isUsable) throw new AppError(ErrorCode.INVALID_CREDENTIALS, INVALID);
+    // The attempt is already counted, so a wrong code needs no further write.
+    if (!(await verify(ticket.codeHash, code))) {
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, INVALID);
-    if (await verify(ticket.codeHash, code)) return;
-    await this.tickets.recordFailure(ticket.id);
-    throw new AppError(ErrorCode.INVALID_CREDENTIALS, INVALID);
+    }
   }
 }

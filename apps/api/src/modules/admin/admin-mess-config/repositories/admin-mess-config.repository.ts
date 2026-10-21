@@ -31,6 +31,11 @@ export interface SlotFields {
   defaultCapacity: number;
 }
 
+export interface SlotChangeActor {
+  staffId: string;
+  reason: string;
+}
+
 export interface ReassignResult {
   bookings: number;
   preferences: number;
@@ -117,13 +122,43 @@ export class AdminMessConfigRepository {
     return result.count === 1;
   }
 
+  /**
+   * Serializes slot changes of one meal until the transaction ends. Overlap and reassignment
+   * checks (BR-MEAL-4/5) read other slots, so two parallel changes must not both pass them.
+   * Callers lock first and read afterwards.
+   */
+  async lockMeal(mealId: string, tx: TransactionClient): Promise<void> {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`meal-slots:${mealId}`}::text))`;
+  }
+
+  /** Locks the slot's meal; false if the slot does not exist. */
+  async lockMealOfSlot(slotId: string, tx: TransactionClient): Promise<boolean> {
+    const slot = await tx.mealSlot.findUnique({ where: { id: slotId }, select: { mealId: true } });
+    if (!slot) return false;
+    await this.lockMeal(slot.mealId, tx);
+    return true;
+  }
+
   async createSlot(mealId: string, fields: SlotFields, tx: TransactionClient): Promise<string> {
-    const last = await tx.mealSlot.aggregate({ where: { mealId }, _max: { sortOrder: true } });
     const slot = await tx.mealSlot.create({
-      data: { mealId, ...fields, sortOrder: (last._max.sortOrder ?? 0) + 1 },
+      data: { mealId, ...fields, sortOrder: 0 },
       select: { id: true },
     });
+    await this.resequenceSlots(mealId, tx);
     return slot.id;
+  }
+
+  /** Keeps `sortOrder` in serving order (by start time), which clients use to list slots. */
+  async resequenceSlots(mealId: string, tx: TransactionClient): Promise<void> {
+    const slots = await tx.mealSlot.findMany({
+      where: { mealId, deletedAt: null },
+      orderBy: [{ startMinute: 'asc' }, { createdAt: 'asc' }],
+      select: { id: true, sortOrder: true },
+    });
+    for (const [index, slot] of slots.entries()) {
+      if (slot.sortOrder === index + 1) continue;
+      await tx.mealSlot.update({ where: { id: slot.id }, data: { sortOrder: index + 1 } });
+    }
   }
 
   async updateSlot(
@@ -170,14 +205,12 @@ export class AdminMessConfigRepository {
     fromSlotId: string,
     toSlotId: string,
     today: BusinessDate,
+    actor: SlotChangeActor,
     tx: TransactionClient,
   ): Promise<ReassignResult> {
     const from = toDate(today);
-    const [bookings, preferences, weekdayRules, dateExceptions] = await Promise.all([
-      tx.booking.updateMany({
-        where: { slotId: fromSlotId, status: 'BOOKED', mealDate: { gte: from } },
-        data: { slotId: toSlotId, version: { increment: 1 } },
-      }),
+    const bookings = await this.moveBookings(fromSlotId, toSlotId, from, actor, tx);
+    const [preferences, weekdayRules, dateExceptions] = await Promise.all([
       tx.mealPreference.updateMany({
         where: { slotId: fromSlotId },
         data: { slotId: toSlotId, version: { increment: 1 } },
@@ -192,11 +225,50 @@ export class AdminMessConfigRepository {
       }),
     ]);
     return {
-      bookings: bookings.count,
+      bookings,
       preferences: preferences.count,
       weekdayRules: weekdayRules.count,
       dateExceptions: dateExceptions.count,
     };
+  }
+
+  /**
+   * A slot change updates the booking and appends a booking event (BR-BOOK-7), and the booking
+   * is marked as last changed by staff so the student sees "Updated by mess staff" (Admin §H).
+   */
+  private async moveBookings(
+    fromSlotId: string,
+    toSlotId: string,
+    from: Date,
+    actor: SlotChangeActor,
+    tx: TransactionClient,
+  ): Promise<number> {
+    const moving = await tx.booking.findMany({
+      where: { slotId: fromSlotId, status: 'BOOKED', mealDate: { gte: from } },
+      select: { id: true },
+    });
+    const ids = moving.map((booking) => booking.id);
+    if (ids.length === 0) return 0;
+    await tx.booking.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        slotId: toSlotId,
+        lastActorType: 'STAFF',
+        lastActorStaffId: actor.staffId,
+        version: { increment: 1 },
+      },
+    });
+    await tx.bookingEvent.createMany({
+      data: ids.map((bookingId) => ({
+        bookingId,
+        type: 'SLOT_CHANGED' as const,
+        payload: { fromSlotId, toSlotId },
+        actorType: 'STAFF' as const,
+        actorStaffId: actor.staffId,
+        reason: actor.reason,
+      })),
+    });
+    return ids.length;
   }
 
   async setWeekdayCapacities(

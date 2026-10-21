@@ -16,7 +16,7 @@ import {
 } from '../../../../infrastructure/database/transaction-runner';
 import { AuditWriter } from '../../audit-log/services/audit-writer.service';
 import { listDates } from '../domain/menu-rules';
-import { AdminMenusRepository } from '../repositories/admin-menus.repository';
+import { AdminMenusRepository, type StoredMenu } from '../repositories/admin-menus.repository';
 import { emptyMenu, toAdminMenu } from './menu-view';
 
 export interface MenuEdit {
@@ -103,14 +103,13 @@ export class MenuEditorService {
   ): Promise<AdminMenu> {
     const mealId = (await this.menus.mealIdsByType(tx)).get(edit.mealType);
     if (!mealId) throw new AppError(ErrorCode.VALIDATION_FAILED, 'This meal is not active.');
+    const existing = await this.menus.find(edit.mealDate, mealId, tx);
     const draft = {
       mealDate: edit.mealDate,
       mealId,
       items: edit.items,
-      isSpecial: edit.isSpecial ?? false,
-      specialTitle: edit.isSpecial ? (edit.specialTitle ?? null) : null,
+      ...special(edit, existing),
     };
-    const existing = await this.menus.find(edit.mealDate, mealId, tx);
     const id = existing ? existing.id : await this.menus.create(draft, tx);
     if (
       existing &&
@@ -144,4 +143,24 @@ export class MenuEditorService {
     }
     return toAdminMenu(saved);
   }
+}
+
+/**
+ * The bulk weekly editor and copy-week send items only; they must not silently clear a
+ * special-meal day (Admin §F) that was set on the single-menu editor.
+ */
+function special(
+  edit: MenuEdit,
+  existing: StoredMenu | null,
+): { isSpecial: boolean; specialTitle: string | null } {
+  if (edit.isSpecial === undefined) {
+    return {
+      isSpecial: existing?.isSpecial ?? false,
+      specialTitle: existing?.isSpecial ? existing.specialTitle : null,
+    };
+  }
+  return {
+    isSpecial: edit.isSpecial,
+    specialTitle: edit.isSpecial ? (edit.specialTitle ?? null) : null,
+  };
 }

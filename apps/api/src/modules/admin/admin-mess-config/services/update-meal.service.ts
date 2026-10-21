@@ -29,6 +29,8 @@ export class UpdateMealService {
 
   execute(command: UpdateMealCommand): Promise<AdminMeal> {
     return this.transactions.run(async (tx) => {
+      // Same lock as slot changes, so a slot added meanwhile cannot end up outside the new window.
+      await this.config.lockMeal(command.id, tx);
       const before = await this.config.findMeal(command.id, tx);
       if (!before) throw notFound('Meal');
       const window = {
