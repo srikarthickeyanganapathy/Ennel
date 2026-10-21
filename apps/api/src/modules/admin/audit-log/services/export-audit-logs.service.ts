@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { stringify } from 'csv-stringify/sync';
+import { toSafeCsv } from '../../../../common/utils/csv';
 import { type AuditLogFilter, AuditLogRepository } from '../repositories/audit-log.repository';
 
 export const AUDIT_EXPORT_MAX_ROWS = 10_000;
@@ -31,7 +31,8 @@ export class ExportAuditLogsService {
       requestId: item.requestId ?? '',
     }));
     return {
-      csv: stringify(rows, { header: true }),
+      // Reasons and snapshots are staff-typed text, so cells are made formula-safe.
+      csv: toSafeCsv(rows),
       isTruncated: result.total > AUDIT_EXPORT_MAX_ROWS,
     };
   }
