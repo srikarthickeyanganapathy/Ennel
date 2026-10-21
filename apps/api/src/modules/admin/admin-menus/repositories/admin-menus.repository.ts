@@ -135,9 +135,15 @@ export class AdminMenusRepository {
     return true;
   }
 
-  async publish(id: string, snapshot: PublishedSnapshot, tx: TransactionClient): Promise<void> {
-    await tx.menu.update({
-      where: { id },
+  /** Publishes only if the menu is still at `version`; false when someone saved in between. */
+  async publish(
+    id: string,
+    version: number,
+    snapshot: PublishedSnapshot,
+    tx: TransactionClient,
+  ): Promise<boolean> {
+    const result = await tx.menu.updateMany({
+      where: { id, version },
       data: {
         status: 'PUBLISHED',
         contentHash: snapshot.contentHash,
@@ -146,6 +152,7 @@ export class AdminMenusRepository {
         version: { increment: 1 },
       },
     });
+    return result.count === 1;
   }
 
   /** Students with a live booking for the meal, who should hear about a menu change. */
