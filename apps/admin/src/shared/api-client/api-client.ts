@@ -64,12 +64,26 @@ async function send<T>(path: string, options: RequestOptions<T>): Promise<Respon
   }
 }
 
+/**
+ * Routes that never carry an access token, so a 401 from them is final. Other auth routes
+ * (me, sessions, change-password, TOTP enrolment) need the token and must refresh like any page.
+ */
+const UNAUTHENTICATED_ROUTES = new Set([
+  '/auth/login',
+  '/auth/totp/verify',
+  '/auth/refresh',
+  '/auth/logout',
+]);
+
 export async function apiRequest<T = void>(
   path: string,
   options: RequestOptions<T> = {},
 ): Promise<T> {
   let response = await send(path, options);
-  if (response.status === 401 && !path.startsWith('/auth/') && (await refreshOnce())) {
+  if (response.status === 401 && !UNAUTHENTICATED_ROUTES.has(path)) {
+    const error = await ApiError.fromResponse(response);
+    // Only an expired or missing token is worth a refresh; a wrong current password is not.
+    if (error.code !== 'UNAUTHENTICATED' || !(await refreshOnce())) throw error;
     response = await send(path, options);
   }
   if (!response.ok) throw await ApiError.fromResponse(response);
