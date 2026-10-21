@@ -3,7 +3,7 @@ import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SecretBox } from '../../src/infrastructure/crypto/secret-box';
 import { resetDatabase, seedFixtures } from './helpers/database';
-import { createStaff, seedRoles, STAFF_PASSWORD } from './helpers/staff';
+import { createStaff, seedRoles, STAFF_PASSWORD, staffToken } from './helpers/staff';
 import { createTestApp, type TestApp } from './helpers/test-app';
 
 const PASSWORD = 'correct-horse-1';
@@ -71,6 +71,37 @@ describe('authentication hardening', () => {
     );
     const student = await ctx.prisma.student.findFirstOrThrow();
     expect(student.lockedUntil).not.toBeNull();
+  });
+
+  it('checks at most five guesses of a reset code, even in parallel (BR-AUTH-6)', async () => {
+    await seedFixtures(ctx.prisma);
+    await http()
+      .post('/api/v1/auth/register')
+      .send({ referenceNumber: '24900001', password: PASSWORD, confirmPassword: PASSWORD })
+      .expect(201);
+    const roster = await ctx.prisma.collegeRosterEntry.findUniqueOrThrow({
+      where: { referenceNumber: '24900001' },
+    });
+    const adminToken = await staffToken(ctx, ['SUPER_ADMIN']);
+    const issued = await http()
+      .post(`/api/v1/admin/students/${roster.id}/credential-resets`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ kind: 'PASSWORD', reason: 'Forgot password' })
+      .expect(201);
+    const wrongCode = issued.body.code === 'AAAAAAAAAA' ? 'BBBBBBBBBB' : 'AAAAAAAAAA';
+    const attempt = (code: string) =>
+      http().post('/api/v1/auth/reset-with-code').send({
+        referenceNumber: '24900001',
+        code,
+        password: 'another-password-2',
+        confirmPassword: 'another-password-2',
+      });
+
+    const guesses = await Promise.all(Array.from({ length: 8 }, () => attempt(wrongCode)));
+    expect(guesses.every((guess) => guess.status === 401)).toBe(true);
+    const ticket = await ctx.prisma.credentialResetTicket.findFirstOrThrow();
+    expect(ticket.failedAttempts).toBe(5);
+    expect((await attempt(issued.body.code)).status).toBe(401);
   });
 
   it('locks a staff member after parallel wrong passwords', async () => {
