@@ -5,6 +5,9 @@ const { THEME_COLORS, THEME_RADII } = require('@ennel/shared');
 module.exports = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // The app has one light palette (Spec §17). 'class' keeps it light even when the phone is in
+  // dark mode, and avoids NativeWind's web crash "Cannot manually set color scheme" under 'media'.
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
