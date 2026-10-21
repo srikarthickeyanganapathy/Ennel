@@ -316,4 +316,24 @@ describe('mess configuration, policy and menus (Admin §D, §E)', () => {
       'Test Hostel',
     ]);
   });
+
+  it('lets Mess Staff read the availability thresholds but not change them (ADR-0013)', async () => {
+    const staffOnly = await staffToken(ctx, ['MESS_STAFF']);
+    const thresholds = await as(staffOnly, 'get', '/api/v1/admin/mess-config/thresholds').expect(
+      200,
+    );
+    expect(thresholds.body).toEqual({
+      fillingFastThresholdPct: 80,
+      recommendedMaxOccupancyPct: 60,
+      version: expect.any(Number),
+    });
+    await as(staffOnly, 'patch', '/api/v1/admin/mess-config/thresholds')
+      .send({
+        fillingFastThresholdPct: 85,
+        recommendedMaxOccupancyPct: 50,
+        version: thresholds.body.version,
+        reason: 'test',
+      })
+      .expect(403);
+  });
 });

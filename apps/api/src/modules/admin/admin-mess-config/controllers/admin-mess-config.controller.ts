@@ -24,6 +24,7 @@ import {
   type MessPolicyView,
   reasonRequestSchema,
   type SlotUsage,
+  type Thresholds,
   thresholdsRequestSchema,
   updateMealRequestSchema,
   updateSlotRequestSchema,
@@ -186,6 +187,15 @@ export class AdminMessConfigController {
     query: z.output<typeof capacityImpactQuerySchema>,
   ): Promise<CapacityImpact> {
     return this.capacity.impact(id, query.capacity, toScope(query));
+  }
+
+  /** Thresholds are configuration, so mess-config:read is enough to see them (ADR-0013). */
+  @Get('thresholds')
+  @RequirePermissions('mess-config:read')
+  async getThresholds(): Promise<Thresholds> {
+    const { fillingFastThresholdPct, recommendedMaxOccupancyPct, version } =
+      await this.policy.get();
+    return { fillingFastThresholdPct, recommendedMaxOccupancyPct, version };
   }
 
   /** Thresholds live in mess_policy but are configuration, not policy (ADR-0013). */
