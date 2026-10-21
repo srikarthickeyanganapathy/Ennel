@@ -4,8 +4,9 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { usePermissions } from '@/features/auth/auth-context';
 import { errorMessage } from '@/shared/api-client/api-error';
+import { ReasonDialog } from '@/shared/components/ReasonDialog';
 import { Button } from '@/shared/components/ui/button';
-import { Dialog, DialogContent } from '@/shared/components/ui/dialog';
+import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dialog';
 import { Field, Input } from '@/shared/components/ui/form-controls';
 import { formatBusinessDate, todayBusinessDate } from '@/shared/lib/format';
 import {
@@ -56,7 +57,7 @@ export function CapacityDialog({
         scope: 'DATE',
         date: override.date,
       }),
-    enabled: override.capacity !== '',
+    enabled: override.capacity !== '' && override.date !== '',
   });
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['mess-config'] });
 
@@ -78,9 +79,16 @@ export function CapacityDialog({
       refresh();
     },
   });
+  // Removing an override is an audited change, so staff confirm it and give their own reason.
+  const [removingDate, setRemovingDate] = useState<string | null>(null);
   const deleteOverride = useMutation({
-    mutationFn: (date: string) => removeOverride(slot.id, date, 'Override removed'),
-    onSuccess: refresh,
+    mutationFn: ({ date, reason }: { date: string; reason: string }) =>
+      removeOverride(slot.id, date, reason),
+    onSuccess: () => {
+      toast.success('Date override removed.');
+      setRemovingDate(null);
+      refresh();
+    },
   });
   const affected = impact.data?.affectedDates[0];
 
@@ -137,7 +145,8 @@ export function CapacityDialog({
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => deleteOverride.mutate(entry.mealDate)}
+                    aria-label={`Remove override on ${formatBusinessDate(entry.mealDate)}`}
+                    onClick={() => (deleteOverride.reset(), setRemovingDate(entry.mealDate))}
                   >
                     Remove
                   </Button>
@@ -203,6 +212,24 @@ export function CapacityDialog({
             <p className="text-sm text-danger">{errorMessage(addOverride.error)}</p>
           ) : null}
         </section>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Close
+          </Button>
+        </DialogFooter>
+        <ReasonDialog
+          open={removingDate !== null}
+          onOpenChange={(isOpen) => !isOpen && setRemovingDate(null)}
+          title={`Remove the override on ${formatBusinessDate(removingDate)}?`}
+          description="The weekday or default capacity applies to that date again."
+          confirmLabel="Remove override"
+          isDestructive
+          isPending={deleteOverride.isPending}
+          error={deleteOverride.error}
+          onConfirm={(reason) =>
+            removingDate && deleteOverride.mutate({ date: removingDate, reason })
+          }
+        />
       </DialogContent>
     </Dialog>
   );
