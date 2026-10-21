@@ -5,6 +5,7 @@ import {
   type StaffWithTemporaryPassword,
 } from '@ennel/shared';
 import { useMutation } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { type z } from 'zod';
 import { errorMessage } from '@/shared/api-client/api-error';
@@ -35,6 +36,14 @@ export function CreateStaffDialog({ open, onOpenChange, onCreated }: CreateStaff
       onCreated(result);
     },
   });
+  // Each open starts with an empty form and no error from an earlier attempt.
+  const { reset: resetForm } = form;
+  const { reset: resetCreate } = create;
+  useEffect(() => {
+    if (!open) return;
+    resetForm();
+    resetCreate();
+  }, [open, resetForm, resetCreate]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

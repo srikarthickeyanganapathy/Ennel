@@ -22,9 +22,14 @@ export function RolesPage() {
   const [draft, setDraft] = useState<Record<string, Set<PermissionKey>>>({});
   const [saving, setSaving] = useState<Role | null>(null);
 
+  // Fills in roles that have no draft yet; unsaved edits to other roles survive a reload.
   useEffect(() => {
-    if (roles.data)
-      setDraft(Object.fromEntries(roles.data.map((role) => [role.id, new Set(role.permissions)])));
+    if (!roles.data) return;
+    const loaded = roles.data;
+    setDraft((current) => ({
+      ...Object.fromEntries(loaded.map((role) => [role.id, new Set(role.permissions)])),
+      ...current,
+    }));
   }, [roles.data]);
 
   const save = useMutation({
@@ -33,6 +38,7 @@ export function RolesPage() {
     onSuccess: (role) => {
       toast.success(`${role.name} permissions saved.`);
       setSaving(null);
+      setDraft((current) => ({ ...current, [role.id]: new Set(role.permissions) }));
       void queryClient.invalidateQueries({ queryKey: ['roles'] });
     },
   });
@@ -114,7 +120,11 @@ export function RolesPage() {
                 {(roles.data ?? []).map((role) => (
                   <td key={role.id} className="px-3 py-2 text-center">
                     {role.key === StaffRole.SUPER_ADMIN ? null : (
-                      <Button size="sm" disabled={!isChanged(role)} onClick={() => setSaving(role)}>
+                      <Button
+                        size="sm"
+                        disabled={!isChanged(role)}
+                        onClick={() => (save.reset(), setSaving(role))}
+                      >
                         Save
                       </Button>
                     )}
