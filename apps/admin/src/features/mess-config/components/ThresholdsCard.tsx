@@ -13,8 +13,12 @@ import { getPolicy, updateThresholds } from '../api/mess-config-api';
 /** Availability label thresholds (ADR-0013), edited with mess-config:update. */
 export function ThresholdsCard() {
   const queryClient = useQueryClient();
-  const canEdit = usePermissions()('mess-config:update');
-  const policy = useQuery({ queryKey: ['policy'], queryFn: getPolicy });
+  const can = usePermissions();
+  // The values come from GET /policy (policy:read). Mess Staff hold mess-config:read without
+  // policy:read, so querying anyway would put a permission error on their page.
+  const canRead = can('policy:read');
+  const canEdit = canRead && can('mess-config:update');
+  const policy = useQuery({ queryKey: ['policy'], queryFn: getPolicy, enabled: canRead });
   const [values, setValues] = useState({ fillingFast: '', recommended: '' });
   const [isSaving, setIsSaving] = useState(false);
   useEffect(() => {
@@ -41,13 +45,18 @@ export function ThresholdsCard() {
     },
   });
 
+  if (!canRead) return null;
   return (
     <Card>
       <CardHeader
         title="Availability labels"
         description="When slots show Filling Fast and Recommended to students. Full and Over Capacity follow official capacity."
       />
-      <QueryBoundary isLoading={policy.isLoading} error={policy.error}>
+      <QueryBoundary
+        isLoading={policy.isLoading}
+        error={policy.error}
+        onRetry={() => void policy.refetch()}
+      >
         <div className="grid gap-3 sm:grid-cols-2">
           <Field
             label="Filling Fast at (% occupancy)"
