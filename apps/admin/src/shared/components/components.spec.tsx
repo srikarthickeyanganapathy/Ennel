@@ -125,6 +125,15 @@ describe('DataTable (Admin UX standards)', () => {
     expect(saveCsv).toHaveBeenCalledWith('rows.csv', "Name,Hostel\nAsha,A\n'=cmd,B");
   });
 
+  it('steps back to the last page when the current page no longer exists', () => {
+    const { onPageChange } = renderTable({
+      rows: [],
+      total: 21,
+      state: { page: 3, pageSize: 20, sortOrder: 'asc' },
+    });
+    expect(onPageChange).toHaveBeenCalledWith(2);
+  });
+
   it('shows loading, error and empty states', () => {
     renderTable({ rows: [], total: 0, emptyTitle: 'No students yet' });
     expect(screen.getByText('No students yet')).toBeInTheDocument();

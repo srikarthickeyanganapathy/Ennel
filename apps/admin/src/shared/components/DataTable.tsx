@@ -7,7 +7,7 @@ import {
   useReactTable,
   type VisibilityState,
 } from '@tanstack/react-table';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { saveCsv, toCsv } from '@/shared/lib/csv';
 import { type TableState } from '@/shared/hooks/use-table-state';
 import { EmptyState, ErrorState, LoadingState } from './QueryStates';
@@ -76,6 +76,12 @@ export function DataTable<T>(props: DataTableProps<T>) {
     },
   });
   const pageCount = Math.max(1, Math.ceil(total / state.pageSize));
+  // Rows can disappear under the current page (bulk move, colleague's change); step back to
+  // the last page that has rows instead of showing an empty "Page 3 of 2".
+  const { isLoading, onPageChange } = props;
+  useEffect(() => {
+    if (!isLoading && total > 0 && state.page > pageCount) onPageChange(pageCount);
+  }, [isLoading, total, state.page, pageCount, onPageChange]);
 
   const exportPage = () => {
     const exportable = table
