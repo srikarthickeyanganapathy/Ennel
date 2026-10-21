@@ -94,6 +94,20 @@ export function LoginPage() {
             <Button type="submit" className="w-full" disabled={verify.isPending}>
               {verify.isPending ? 'Checking…' : 'Verify'}
             </Button>
+            {/* The challenge expires; without this the only way back was reloading the page. */}
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => {
+                setChallengeToken(null);
+                setCode('');
+                setCodeError(null);
+                verify.reset();
+              }}
+            >
+              Back to sign-in
+            </Button>
           </form>
         ) : (
           <form

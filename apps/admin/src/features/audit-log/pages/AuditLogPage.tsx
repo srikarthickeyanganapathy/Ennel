@@ -97,7 +97,7 @@ export function AuditLogPage() {
     entityType: filters.entityType || undefined,
     entityId: filters.entityId || undefined,
     from: filters.from ? new Date(`${filters.from}T00:00:00+05:30`).toISOString() : undefined,
-    to: filters.to ? new Date(`${filters.to}T23:59:59+05:30`).toISOString() : undefined,
+    to: filters.to ? new Date(`${filters.to}T23:59:59.999+05:30`).toISOString() : undefined,
     isOverride: filters.isOverride ? ('true' as const) : undefined,
   };
   const logs = useQuery({ queryKey: ['audit-logs', query], queryFn: () => listAuditLogs(query) });

@@ -61,6 +61,21 @@ describe('staff sign-in (Admin §B)', () => {
     });
   });
 
+  it('can go back from the code step to the password form', async () => {
+    vi.mocked(login).mockResolvedValue({
+      status: 'TOTP_REQUIRED',
+      challengeToken: 'challenge-token-1',
+    });
+    renderAt('/login');
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'warden@ennel.test' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'a-long-password' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Back to sign-in' }));
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.queryByLabelText('Authenticator code')).not.toBeInTheDocument();
+  });
+
   it('validates the form before calling the API', async () => {
     renderAt('/login');
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));

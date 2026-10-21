@@ -13,6 +13,7 @@ import { Field, Input } from '@/shared/components/ui/form-controls';
 import { PageHeader } from '@/shared/layout/PageHeader';
 import { formatDateTime } from '@/shared/lib/format';
 import { confirmTotp, enrollTotp, listSessions, revokeAllSessions } from '../api/auth-api';
+import { formatRoles } from '@/features/staff/constants/role-labels';
 import { useAuth } from '../auth-context';
 
 /** Admin §B: own sessions, "log out everywhere" and optional two-factor sign-in. */
@@ -42,7 +43,9 @@ export function AccountPage() {
             </Button>
           }
         />
-        <p className="text-sm text-muted-foreground">Roles: {me?.roles.join(', ') || 'none'}</p>
+        <p className="text-sm text-muted-foreground">
+          Roles: {formatRoles(me?.roles ?? []) || 'none'}
+        </p>
       </Card>
       <TotpCard isEnabled={me?.totpEnabled ?? false} onEnabled={reloadMe} />
       <Card>
@@ -129,9 +132,16 @@ function TotpCard({
         }
       />
       {!isEnabled && !enroll.data ? (
-        <Button onClick={() => enroll.mutate()} disabled={enroll.isPending}>
-          Set up two-factor sign-in
-        </Button>
+        <div className="space-y-2">
+          <Button onClick={() => enroll.mutate()} disabled={enroll.isPending}>
+            {enroll.isPending ? 'Starting…' : 'Set up two-factor sign-in'}
+          </Button>
+          {enroll.error ? (
+            <p role="alert" className="text-sm text-danger">
+              {errorMessage(enroll.error)}
+            </p>
+          ) : null}
+        </div>
       ) : null}
       {!isEnabled && enroll.data ? (
         <div className="space-y-3 text-sm">

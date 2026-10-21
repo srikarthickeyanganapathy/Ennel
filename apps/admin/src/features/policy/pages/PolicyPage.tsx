@@ -16,6 +16,7 @@ import {
   listPolicyHistory,
   updatePolicy,
 } from '@/features/mess-config/api/mess-config-api';
+import { isVersionConflict } from '@/shared/api-client/api-error';
 import { QueryBoundary } from '@/shared/components/QueryStates';
 import { ReasonDialog } from '@/shared/components/ReasonDialog';
 import { Button } from '@/shared/components/ui/button';
@@ -66,6 +67,17 @@ function toDraft(policy: MessPolicyView): Draft {
   return draft;
 }
 
+/** Only edited fields are sent, so an unchanged save cannot create an empty policy version. */
+function changedFields(draft: Draft | null, policy: MessPolicyView | undefined): Partial<Draft> {
+  if (!draft || !policy) return {};
+  const original = toDraft(policy);
+  return Object.fromEntries(
+    Object.entries(draft).filter(
+      ([key, value]) => JSON.stringify(value) !== JSON.stringify(original[key as keyof Draft]),
+    ),
+  ) as Partial<Draft>;
+}
+
 /** Rule 8 policy settings with explanations, a mandatory reason and change history (Admin §D). */
 export function PolicyPage() {
   const queryClient = useQueryClient();
@@ -78,30 +90,41 @@ export function PolicyPage() {
     if (policy.data) setDraft(toDraft(policy.data));
   }, [policy.data]);
 
+  const changes = changedFields(draft, policy.data);
+  const changeCount = Object.keys(changes).length;
+  // An emptied number input is NaN; it must be filled in before saving.
+  const hasEmptyNumber = NUMBER_FIELDS.some((field) => Number.isNaN(draft?.[field.key]));
   const save = useMutation({
-    mutationFn: (reason: string) => {
-      const original = policy.data ? toDraft(policy.data) : null;
-      const changes = Object.fromEntries(
-        Object.entries(draft ?? {}).filter(
-          ([key, value]) =>
-            JSON.stringify(value) !== JSON.stringify(original?.[key as keyof Draft]),
-        ),
-      ) as Partial<Draft>;
-      return updatePolicy({
+    mutationFn: (reason: string) =>
+      updatePolicy({
         ...(changes as Omit<UpdatePolicyRequest, 'version' | 'reason'>),
         reason,
         version: policy.data?.version ?? 1,
-      });
-    },
+      }),
     onSuccess: (updated) => {
       queryClient.setQueryData(['policy'], updated);
       void queryClient.invalidateQueries({ queryKey: ['policy-history'] });
       toast.success('Policy saved.');
       setIsSaving(false);
     },
+    // Reload so the page shows the colleague's version; the form resets to it.
+    onError: (error) => {
+      if (isVersionConflict(error)) void queryClient.invalidateQueries({ queryKey: ['policy'] });
+    },
   });
   const set = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     setDraft((current) => (current ? { ...current, [key]: value } : current));
+  const saveButton = (
+    <Button
+      disabled={changeCount === 0 || hasEmptyNumber}
+      title={changeCount === 0 ? 'Nothing has changed yet' : undefined}
+      onClick={() => (save.reset(), setIsSaving(true))}
+    >
+      {changeCount > 0
+        ? `Save ${changeCount} ${changeCount === 1 ? 'change' : 'changes'}`
+        : 'Save changes'}
+    </Button>
+  );
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -113,7 +136,7 @@ export function PolicyPage() {
             ? `Version ${policy.data.version} · last changed ${formatDateTime(policy.data.updatedAt)}${policy.data.updatedByName ? ` by ${policy.data.updatedByName}` : ''}`
             : undefined
         }
-        actions={canEdit ? <Button onClick={() => setIsSaving(true)}>Save changes</Button> : null}
+        actions={canEdit ? saveButton : null}
       />
       <QueryBoundary
         isLoading={policy.isLoading || !draft}
@@ -213,8 +236,8 @@ export function PolicyPage() {
                       id={field.key}
                       type="number"
                       disabled={!canEdit}
-                      value={String(draft[field.key])}
-                      onChange={(event) => set(field.key, Number(event.target.value) as never)}
+                      value={Number.isNaN(draft[field.key]) ? '' : String(draft[field.key])}
+                      onChange={(event) => set(field.key, event.target.valueAsNumber as never)}
                     />
                   </Field>
                 ))}

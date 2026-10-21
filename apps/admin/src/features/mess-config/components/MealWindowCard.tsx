@@ -2,7 +2,7 @@ import { type AdminMeal } from '@ennel/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { errorMessage } from '@/shared/api-client/api-error';
+import { errorMessage, isVersionConflict } from '@/shared/api-client/api-error';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 import { Button } from '@/shared/components/ui/button';
@@ -18,6 +18,13 @@ export function MealWindowCard({ meal }: { meal: AdminMeal }) {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [values, setValues] = useState(() => toValues(meal));
+  // A newer version (a colleague's save, reloaded after a conflict) replaces the form values.
+  const [syncedVersion, setSyncedVersion] = useState(meal.version);
+  if (meal.version !== syncedVersion) {
+    setSyncedVersion(meal.version);
+    setValues(toValues(meal));
+  }
+  const refresh = () => void queryClient.invalidateQueries({ queryKey: ['mess-config'] });
   const save = useMutation({
     mutationFn: () =>
       updateMeal(meal.id, {
@@ -30,8 +37,9 @@ export function MealWindowCard({ meal }: { meal: AdminMeal }) {
     onSuccess: () => {
       toast.success(`${meal.displayName} saved.`);
       setIsEditing(false);
-      void queryClient.invalidateQueries({ queryKey: ['mess-config'] });
+      refresh();
     },
+    onError: (error) => isVersionConflict(error) && refresh(),
   });
   const isBreakfast = meal.mealType === 'BREAKFAST';
 
@@ -47,7 +55,7 @@ export function MealWindowCard({ meal }: { meal: AdminMeal }) {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => (setValues(toValues(meal)), setIsEditing(true))}
+                onClick={() => (setValues(toValues(meal)), save.reset(), setIsEditing(true))}
               >
                 Edit serving window
               </Button>

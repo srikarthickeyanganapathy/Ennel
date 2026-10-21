@@ -7,3 +7,10 @@ export const ROLE_LABELS: Record<StaffRole, string> = {
   WARDEN: 'Warden',
   AUDITOR: 'Auditor',
 };
+
+const isStaffRole = (role: string): role is StaffRole => Object.hasOwn(ROLE_LABELS, role);
+
+/** Readable names for role keys from /auth/me, which arrive as plain strings. */
+export function formatRoles(roles: readonly string[]): string {
+  return roles.map((role) => (isStaffRole(role) ? ROLE_LABELS[role] : role)).join(', ');
+}

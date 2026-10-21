@@ -18,10 +18,13 @@ type LifecycleAction = { kind: 'disable' | 'enable' | 'delete'; slot: AdminSlot 
 export function SlotsTable({ meal }: { meal: AdminMeal }) {
   const queryClient = useQueryClient();
   const can = usePermissions();
-  const [editing, setEditing] = useState<AdminSlot | 'new' | null>(null);
-  const [capacityFor, setCapacityFor] = useState<AdminSlot | null>(null);
+  // Ids, not snapshots, so the dialogs always show the latest version of the slot.
+  const [editing, setEditing] = useState<string | 'new' | null>(null);
+  const [capacityForId, setCapacityForId] = useState<string | null>(null);
   const [lifecycle, setLifecycle] = useState<LifecycleAction | null>(null);
   const [reassignTo, setReassignTo] = useState('');
+  const editingSlot = meal.slots.find((slot) => slot.id === editing) ?? null;
+  const capacityFor = meal.slots.find((slot) => slot.id === capacityForId) ?? null;
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['mess-config'] });
 
   const change = useMutation({
@@ -79,12 +82,12 @@ export function SlotsTable({ meal }: { meal: AdminMeal }) {
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-1">
-                    <Button size="sm" variant="outline" onClick={() => setCapacityFor(slot)}>
+                    <Button size="sm" variant="outline" onClick={() => setCapacityForId(slot.id)}>
                       Capacity
                     </Button>
                     {can('mess-config:update') ? (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => setEditing(slot)}>
+                        <Button size="sm" variant="outline" onClick={() => setEditing(slot.id)}>
                           Edit
                         </Button>
                         {isBreakfast ? null : (
@@ -126,20 +129,20 @@ export function SlotsTable({ meal }: { meal: AdminMeal }) {
       )}
       <SlotFormDialog
         meal={meal}
-        slot={editing === 'new' ? null : editing}
-        open={editing !== null}
+        slot={editingSlot}
+        open={editing === 'new' || editingSlot !== null}
         onOpenChange={(open) => !open && setEditing(null)}
       />
       {capacityFor ? (
         <CapacityDialog
           slot={capacityFor}
           open
-          onOpenChange={(open) => !open && setCapacityFor(null)}
+          onOpenChange={(open) => !open && setCapacityForId(null)}
         />
       ) : null}
       <ReasonDialog
         open={lifecycle !== null}
-        onOpenChange={(open) => !open && setLifecycle(null)}
+        onOpenChange={(open) => !open && (change.reset(), setLifecycle(null))}
         title={
           lifecycle
             ? `${lifecycle.kind === 'delete' ? 'Delete' : lifecycle.kind === 'disable' ? 'Disable' : 'Enable'} ${lifecycle.slot.label}?`

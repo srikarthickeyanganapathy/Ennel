@@ -31,7 +31,10 @@ function menuStatus(menu: AdminMenu): {
 export function MenusPage() {
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(() => startOfWeek(todayBusinessDate()));
-  const [editing, setEditing] = useState<AdminMenu | null>(null);
+  // Only the cell is remembered; the menu itself always comes from the latest week data.
+  const [editingCell, setEditingCell] = useState<Pick<AdminMenu, 'mealDate' | 'mealType'> | null>(
+    null,
+  );
   const [isCopying, setIsCopying] = useState(false);
   const [overwrite, setOverwrite] = useState(false);
   const week = useQuery({ queryKey: ['menus', weekStart], queryFn: () => getMenuWeek(weekStart) });
@@ -68,7 +71,7 @@ export function MenusPage() {
               Next week
             </Button>
             <PermissionGate permissions={['menus:update']}>
-              <Button onClick={() => setIsCopying(true)}>Copy previous week</Button>
+              <Button onClick={() => (copy.reset(), setIsCopying(true))}>Copy previous week</Button>
             </PermissionGate>
           </>
         }
@@ -108,7 +111,7 @@ export function MenusPage() {
                         <button
                           type="button"
                           className="w-full rounded-md border border-border p-2 text-left hover:bg-mint focus-visible:outline-2"
-                          onClick={() => setEditing(menu)}
+                          onClick={() => setEditingCell(menu)}
                           aria-label={`Edit ${MEAL_NAMES[mealType]} on ${formatBusinessDate(date)}`}
                         >
                           <StatusBadge label={status.label} tone={status.tone} />
@@ -137,7 +140,10 @@ export function MenusPage() {
           </table>
         </div>
       </QueryBoundary>
-      <MenuEditorDialog menu={editing} onClose={() => setEditing(null)} />
+      <MenuEditorDialog
+        menu={editingCell ? (find(editingCell.mealDate, editingCell.mealType) ?? null) : null}
+        onClose={() => setEditingCell(null)}
+      />
       <Dialog open={isCopying} onOpenChange={setIsCopying}>
         <DialogContent
           title="Copy previous week?"

@@ -44,12 +44,16 @@ export function StudentsPage() {
       setIsMoving(false);
       setSelection({});
       void queryClient.invalidateQueries({ queryKey: ['students'] });
+      void queryClient.invalidateQueries({ queryKey: ['student'] });
+      void queryClient.invalidateQueries({ queryKey: ['hostels'] });
     },
   });
 
   const setFilter = <K extends keyof Filters>(key: K, value: Filters[K] | '') => {
     setFilters((current) => ({ ...current, [key]: value === '' ? undefined : value }));
     table.resetPage();
+    // Selected rows the new filter hides would otherwise be moved without being seen.
+    setSelection({});
   };
 
   const columns = useMemo<ColumnDef<AdminStudentListItem, unknown>[]>(
@@ -157,7 +161,7 @@ export function StudentsPage() {
               <Button
                 variant="outline"
                 disabled={selectedIds.length === 0}
-                onClick={() => setIsMoving(true)}
+                onClick={() => (move.reset(), setTargetBlockId(''), setIsMoving(true))}
               >
                 Move {selectedIds.length || ''} to hostel…
               </Button>

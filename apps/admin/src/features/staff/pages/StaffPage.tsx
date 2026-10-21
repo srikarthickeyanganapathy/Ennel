@@ -4,6 +4,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { toast } from 'sonner';
+import { errorMessage, isVersionConflict } from '@/shared/api-client/api-error';
 import { DataTable, type DataTableColumnMeta } from '@/shared/components/DataTable';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { ReasonDialog } from '@/shared/components/ReasonDialog';
@@ -79,8 +80,16 @@ export function StaffPage() {
       setPending(null);
       refresh();
     },
+    // Close and reload so the next attempt starts from the colleague's roles and version.
+    onError: (error) => {
+      if (!isVersionConflict(error)) return;
+      toast.error(`${errorMessage(error)} The list has been reloaded.`);
+      setPending(null);
+      refresh();
+    },
   });
 
+  const { reset: resetAction } = action;
   const columns = useMemo<ColumnDef<StaffUser, unknown>[]>(
     () => [
       {
@@ -125,12 +134,12 @@ export function StaffPage() {
           <StaffActions
             staff={row.original}
             isSelf={row.original.id === me?.id}
-            onAction={setPending}
+            onAction={(next) => (resetAction(), setPending(next))}
           />
         ),
       },
     ],
-    [me?.id],
+    [me?.id, resetAction],
   );
 
   return (

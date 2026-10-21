@@ -2,6 +2,7 @@ import { type AdminHostel, type AdminStudentDetail } from '@ennel/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { isVersionConflict } from '@/shared/api-client/api-error';
 import { ReasonDialog } from '@/shared/components/ReasonDialog';
 import { Field, Input, Select } from '@/shared/components/ui/form-controls';
 import { updateStudent } from '../api/students-api';
@@ -46,10 +47,21 @@ export function EditStudentDialog({
     },
     onSuccess: (updated) => {
       queryClient.setQueryData(['student', student.rosterEntryId], updated);
+      // The list shows name, year, hostel and room too.
+      void queryClient.invalidateQueries({ queryKey: ['students'] });
       toast.success('Student details saved.');
       onOpenChange(false);
     },
+    // Reloading brings the colleague's version in, and the effect above resets the form to it.
+    onError: (error) => {
+      if (isVersionConflict(error))
+        void queryClient.invalidateQueries({ queryKey: ['student', student.rosterEntryId] });
+    },
   });
+  const { reset: resetSave } = save;
+  useEffect(() => {
+    if (open) resetSave();
+  }, [open, resetSave]);
 
   const set = (key: keyof typeof values) => (event: { target: { value: string } }) =>
     setValues((current) => ({ ...current, [key]: event.target.value }));
@@ -62,7 +74,18 @@ export function EditStudentDialog({
       confirmLabel="Save changes"
       isPending={save.isPending}
       error={save.error}
-      onConfirm={(reason) => save.mutate(reason)}
+      onConfirm={(reason) => {
+        // An unchanged save would still write an audit entry, so nothing is sent.
+        const original = initialValues(student);
+        const isUnchanged = Object.entries(values).every(
+          ([key, value]) => value === original[key as keyof typeof original],
+        );
+        if (isUnchanged) {
+          toast.info('Nothing has changed.');
+          return;
+        }
+        save.mutate(reason);
+      }}
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Full name" htmlFor="edit-name">

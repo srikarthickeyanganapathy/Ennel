@@ -1,5 +1,6 @@
 import { Link, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/auth-context';
+import { formatRoles } from '@/features/staff/constants/role-labels';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -26,7 +27,7 @@ export function AppShell() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" aria-label="Account menu">
                 {me?.fullName ?? 'Account'}
-                <span className="text-muted-foreground">{me?.roles.join(', ')}</span>
+                <span className="text-muted-foreground">{formatRoles(me?.roles ?? [])}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
