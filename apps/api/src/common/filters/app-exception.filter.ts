@@ -47,8 +47,11 @@ export class AppExceptionFilter implements ExceptionFilter {
       };
     }
     if (exception instanceof HttpException) {
-      const status = exception.getStatus();
-      const code = HTTP_STATUS_CODES[status] ?? ErrorCode.INTERNAL_ERROR;
+      const httpStatus = exception.getStatus();
+      const code = HTTP_STATUS_CODES[httpStatus] ?? ErrorCode.INTERNAL_ERROR;
+      // A framework error mapped to one of our codes uses that code's documented status, e.g.
+      // multer's 413 for an oversized file becomes 422 FILE_INVALID (docs/api-contract.md §1.2).
+      const status = code === ErrorCode.INTERNAL_ERROR ? httpStatus : ERROR_HTTP_STATUS[code];
       const message = status >= 500 ? 'Something went wrong.' : exception.message;
       return { status, body: { code, message } };
     }

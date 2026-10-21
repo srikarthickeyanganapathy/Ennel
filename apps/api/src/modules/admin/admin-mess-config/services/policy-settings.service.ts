@@ -47,6 +47,9 @@ export class PolicySettingsService {
   update(command: PolicyUpdateCommand): Promise<MessPolicyView> {
     return this.transactions.run(async (tx) => {
       const current = await this.policies.get(tx);
+      // Checked first: comparing against a colleague's newer values could otherwise report
+      // "Nothing changed" or validate against settings the editor never saw (BR-ADM-2).
+      if (current.version !== command.version) throw staleVersion('policy');
       const { before, after } = diffPolicy(current, command.changes);
       if (Object.keys(after).length === 0) {
         throw new AppError(ErrorCode.VALIDATION_FAILED, 'Nothing changed.');
