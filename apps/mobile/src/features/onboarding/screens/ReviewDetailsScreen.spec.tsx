@@ -60,7 +60,7 @@ describe('ReviewDetailsScreen (Spec §3 Screen 8)', () => {
   it('returns to a step without clearing entries', async () => {
     await renderWithProviders(<ReviewDetailsScreen />);
     await fireEvent.press(await screen.findByRole('button', { name: 'Edit Hostel & room' }));
-    expect(mockRouter.navigate).toHaveBeenCalledWith('/(onboarding)/hostel');
+    expect(mockRouter.dismissTo).toHaveBeenCalledWith('/(onboarding)/hostel');
     expect(useOnboardingDraft.getState().profile.phone).toBe('9876543210');
   });
 });

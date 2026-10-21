@@ -16,6 +16,7 @@ export const mockRouter = {
   push: jest.fn(),
   replace: jest.fn(),
   navigate: jest.fn(),
+  dismissTo: jest.fn(),
   back: jest.fn(),
 };
 

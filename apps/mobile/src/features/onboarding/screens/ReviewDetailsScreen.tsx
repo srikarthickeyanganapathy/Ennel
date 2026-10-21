@@ -36,7 +36,8 @@ function Section({ title, editPath, children }: SectionProps) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Edit ${title}`}
-          onPress={() => router.navigate(editPath)}
+          // Back to the existing step, so the stack does not grow with every edit.
+          onPress={() => router.dismissTo(editPath)}
           className="px-2 py-1"
         >
           <Text className="font-semibold text-primary">Edit</Text>
