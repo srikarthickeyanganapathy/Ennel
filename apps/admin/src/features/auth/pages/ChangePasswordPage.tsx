@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { changePasswordRequestSchema, STAFF_PASSWORD_MIN_LENGTH } from '@ennel/shared';
 import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { type z } from 'zod';
 import { ApiError, errorMessage } from '@/shared/api-client/api-error';
@@ -96,6 +96,12 @@ export function ChangePasswordPage() {
           <Button type="submit" className="w-full" disabled={save.isPending}>
             {save.isPending ? 'Saving…' : 'Change password'}
           </Button>
+          {/* This page sits outside the app layout; a voluntary change needs a way back. */}
+          {me?.mustChangePassword ? null : (
+            <Button variant="ghost" className="w-full" asChild>
+              <Link to="/account">Cancel</Link>
+            </Button>
+          )}
         </form>
       </Card>
     </div>
