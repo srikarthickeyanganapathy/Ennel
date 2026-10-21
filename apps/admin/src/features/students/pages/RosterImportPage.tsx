@@ -148,7 +148,14 @@ export function RosterImportPage() {
           </p>
         ) : null}
       </Card>
-      {current ? <ImportPreview summary={current} onConfirm={() => setIsConfirming(true)} /> : null}
+      {current ? (
+        // Keyed by import so the result filter and page start fresh for each import.
+        <ImportPreview
+          key={current.id}
+          summary={current}
+          onConfirm={() => (confirm.reset(), setIsConfirming(true))}
+        />
+      ) : null}
       <Card>
         <CardHeader title="Recent imports" />
         <ul className="divide-y divide-border text-sm">
