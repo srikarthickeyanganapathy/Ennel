@@ -4,7 +4,7 @@ import { logoutStudent } from '@/features/auth/api/auth-api';
 import { useOnboardingDraft } from '@/features/onboarding/store/onboarding-draft.store';
 import { useSessionStore } from '@/shared/store/session.store';
 import { writeRefreshToken } from '@/shared/store/token-storage';
-import { mockRouter, renderWithProviders } from '@/test-utils/render';
+import { renderWithProviders } from '@/test-utils/render';
 import { ProfileScreen } from './ProfileScreen';
 
 jest.mock('@/features/auth/api/auth-api');
@@ -40,6 +40,5 @@ describe('ProfileScreen logout (Spec §9, §14)', () => {
     await waitFor(() => expect(useSessionStore.getState().status).toBe('signedOut'));
     expect(logoutStudent).toHaveBeenCalledWith('refresh-token-value-0123456789');
     expect(useOnboardingDraft.getState().profile.phone).toBe('');
-    expect(mockRouter.replace).toHaveBeenCalledWith('/');
   });
 });

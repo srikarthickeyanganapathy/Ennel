@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { useLogout } from '@/features/auth/hooks/use-auth-mutations';
 import { AppButton } from '@/shared/components/AppButton';
 import { Screen } from '@/shared/components/Screen';
@@ -7,7 +6,6 @@ import { confirmAction } from '@/shared/utils/confirm-action';
 
 /** Placeholder for Spec §9; for now it offers Logout with confirmation (Spec §14). */
 export function ProfileScreen() {
-  const router = useRouter();
   const logout = useLogout();
 
   const confirmLogout = async () => {
@@ -18,8 +16,8 @@ export function ProfileScreen() {
       confirmLabel: 'Log Out',
       isDestructive: true,
     });
-    if (!isConfirmed) return;
-    logout.mutate(undefined, { onSettled: () => router.replace('/') });
+    // The signed-out session sends the student to Login (SessionGate); no navigation here.
+    if (isConfirmed) logout.mutate();
   };
 
   return (
