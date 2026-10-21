@@ -2,7 +2,7 @@ import { type AdminMeal, type AdminSlot } from '@ennel/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { errorMessage } from '@/shared/api-client/api-error';
+import { errorMessage, isVersionConflict } from '@/shared/api-client/api-error';
 import { Button } from '@/shared/components/ui/button';
 import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dialog';
 import { Field, Input } from '@/shared/components/ui/form-controls';
@@ -53,7 +53,14 @@ export function SlotFormDialog({ meal, slot, open, onOpenChange }: SlotFormDialo
       onOpenChange(false);
       void queryClient.invalidateQueries({ queryKey: ['mess-config'] });
     },
+    // The reloaded slot arrives through props and resets the form to the colleague's values.
+    onError: (error) =>
+      isVersionConflict(error) && queryClient.invalidateQueries({ queryKey: ['mess-config'] }),
   });
+  const { reset: resetSave } = save;
+  useEffect(() => {
+    if (open) resetSave();
+  }, [open, resetSave]);
   const isBreakfast = meal.mealType === 'BREAKFAST';
 
   return (

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { usePermissions } from '@/features/auth/auth-context';
+import { isVersionConflict } from '@/shared/api-client/api-error';
 import { QueryBoundary } from '@/shared/components/QueryStates';
 import { ReasonDialog } from '@/shared/components/ReasonDialog';
 import { Button } from '@/shared/components/ui/button';
@@ -42,6 +43,10 @@ export function ThresholdsCard() {
       queryClient.setQueryData(['policy'], updated);
       toast.success('Thresholds saved.');
       setIsSaving(false);
+    },
+    // The reloaded policy resets the inputs, so the next attempt starts from the latest values.
+    onError: (error) => {
+      if (isVersionConflict(error)) void queryClient.invalidateQueries({ queryKey: ['policy'] });
     },
   });
 
@@ -90,7 +95,7 @@ export function ThresholdsCard() {
           </Field>
         </div>
         {canEdit ? (
-          <Button className="mt-4" onClick={() => setIsSaving(true)}>
+          <Button className="mt-4" onClick={() => (save.reset(), setIsSaving(true))}>
             Save thresholds
           </Button>
         ) : null}
