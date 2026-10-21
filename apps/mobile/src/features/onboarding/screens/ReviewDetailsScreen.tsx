@@ -18,6 +18,7 @@ import {
   type MealDraft,
   useOnboardingDraft,
 } from '../store/onboarding-draft.store';
+import { isSlotAutoFilled } from '../utils/meal-slot-choice';
 
 interface SectionProps {
   title: string;
@@ -60,8 +61,9 @@ function Row({ label, value }: { label: string; value: string }) {
 function describeMeal(meal: MealConfig, draft: MealDraft): string {
   if (!draft.isEnabled) return 'OFF';
   const diet = draft.dietType === 'VEG' ? 'Veg' : 'Non-Veg';
-  const slot = meal.slots.find((candidate) => candidate.id === draft.slotId) ?? meal.slots[0];
-  return `ON • ${slot?.label ?? ''} • ${diet}`;
+  const chosen = meal.slots.find((candidate) => candidate.id === draft.slotId);
+  const slot = chosen ?? (isSlotAutoFilled(meal) ? meal.slots[0] : undefined);
+  return `ON • ${slot?.label ?? 'No slot chosen'} • ${diet}`;
 }
 
 /** Spec §3 Screen 8: review, edit without losing entries, then save everything at once. */
