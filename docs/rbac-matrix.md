@@ -89,11 +89,12 @@ While a password change is pending (first login or after a reset), only `GET /ad
 
 ## Routes that need more than one key or a non-obvious key (Phase 2)
 
-| Route                               | Keys                            | Why                                                                           |
-| ----------------------------------- | ------------------------------- | ----------------------------------------------------------------------------- |
-| `POST /admin/staff-users`           | `staff:manage` + `roles:manage` | A new account is created with roles, so it also needs the role-assignment key |
-| `GET /admin/roles`                  | `staff:read`                    | The staff page shows role names and their permissions                         |
-| `PUT /admin/staff-users/{id}/roles` | `roles:manage`                  | Role assignment is Super Admin only (Admin §A)                                |
+| Route                               | Keys                            | Why                                                                                                                  |
+| ----------------------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `POST /admin/staff-users`           | `staff:manage` + `roles:manage` | A new account is created with roles, so it also needs the role-assignment key                                        |
+| `GET /admin/mess-config/thresholds` | `mess-config:read`              | Availability thresholds are configuration (ADR-0013), so Mess Staff can see them; editing needs `mess-config:update` |
+| `GET /admin/roles`                  | `staff:read`                    | The staff page shows role names and their permissions                                                                |
+| `PUT /admin/staff-users/{id}/roles` | `roles:manage`                  | Role assignment is Super Admin only (Admin §A)                                                                       |
 
 Account safety rules on top of permissions: staff cannot disable themselves or remove their own Super Admin role, and the last active Super Admin cannot be disabled or demoted (checked under a database lock).
 
