@@ -5,6 +5,7 @@ import { AppModule } from './app.module';
 import { StructuredLogger } from './common/logging/structured-logger';
 import { API_PREFIX, API_PREFIX_OPTIONS } from './config/api-prefix';
 import { APP_CONFIG, type AppConfig } from './config/app-config';
+import { isAllowedOrigin } from './config/cors';
 
 async function bootstrap(): Promise<void> {
   const logger = new StructuredLogger(process.env.NODE_ENV !== 'production');
@@ -12,7 +13,11 @@ async function bootstrap(): Promise<void> {
   const config = app.get<AppConfig>(APP_CONFIG);
 
   app.setGlobalPrefix(API_PREFIX, API_PREFIX_OPTIONS);
-  app.enableCors({ origin: config.adminWebOrigin, credentials: true });
+  app.enableCors({
+    origin: (origin: string | undefined, callback: (error: Error | null, allow: boolean) => void) =>
+      callback(null, isAllowedOrigin(origin, config)),
+    credentials: true,
+  });
   app.enableShutdownHooks();
 
   const document = SwaggerModule.createDocument(
