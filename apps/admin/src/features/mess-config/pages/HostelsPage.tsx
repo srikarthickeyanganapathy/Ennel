@@ -115,7 +115,12 @@ function HostelCard({
               tone={hostel.isActive ? 'success' : 'neutral'}
             />
             {canEdit ? (
-              <Button size="sm" variant="outline" onClick={() => toggleHostel.mutate()}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={toggleHostel.isPending}
+                onClick={() => toggleHostel.mutate()}
+              >
                 {hostel.isActive ? 'Deactivate' : 'Activate'}
               </Button>
             ) : null}
@@ -138,6 +143,7 @@ function HostelCard({
                 <Button
                   size="sm"
                   variant="outline"
+                  disabled={toggleBlock.isPending}
                   onClick={() => toggleBlock.mutate({ id: block.id, isActive: !block.isActive })}
                 >
                   {block.isActive ? 'Deactivate' : 'Activate'}
