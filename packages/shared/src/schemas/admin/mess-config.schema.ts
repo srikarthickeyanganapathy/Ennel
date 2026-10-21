@@ -106,12 +106,22 @@ export type CapacityOverride = z.infer<typeof capacityOverrideSchema>;
 export const CAPACITY_SCOPES = ['DEFAULT', 'WEEKDAY', 'DATE'] as const;
 
 /** "Lowering capacity below current bookings shows a warning with impact counts" (Admin §D). */
-export const capacityImpactQuerySchema = z.object({
-  capacity: z.coerce.number().int().min(0),
-  scope: z.enum(CAPACITY_SCOPES),
-  weekday: z.coerce.number().int().min(0).max(6).optional(),
-  date: businessDateSchema.optional(),
-});
+export const capacityImpactQuerySchema = z
+  .object({
+    capacity: z.coerce.number().int().min(0),
+    scope: z.enum(CAPACITY_SCOPES),
+    weekday: z.coerce.number().int().min(0).max(6).optional(),
+    date: businessDateSchema.optional(),
+  })
+  // A WEEKDAY or DATE check without its weekday or date would silently report another scope.
+  .refine((query) => query.scope !== 'WEEKDAY' || query.weekday !== undefined, {
+    path: ['weekday'],
+    message: 'Choose a weekday',
+  })
+  .refine((query) => query.scope !== 'DATE' || query.date !== undefined, {
+    path: ['date'],
+    message: 'Choose a date',
+  });
 export type CapacityImpactQuery = z.input<typeof capacityImpactQuerySchema>;
 
 export const capacityImpactSchema = z.object({
@@ -121,6 +131,15 @@ export const capacityImpactSchema = z.object({
   totalOverBy: z.number().int(),
 });
 export type CapacityImpact = z.infer<typeof capacityImpactSchema>;
+
+/** Availability label thresholds (ADR-0013); readable with mess-config:read. */
+export const thresholdsSchema = z.object({
+  fillingFastThresholdPct: z.number().int(),
+  recommendedMaxOccupancyPct: z.number().int(),
+  /** The mess_policy version, sent back on save. */
+  version: z.number().int(),
+});
+export type Thresholds = z.infer<typeof thresholdsSchema>;
 
 export const thresholdsRequestSchema = z.object({
   fillingFastThresholdPct: z.number().int().min(1).max(99),
