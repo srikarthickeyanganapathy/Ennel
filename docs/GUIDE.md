@@ -85,10 +85,17 @@ Quick health check in a browser: http://localhost:3000/api/v1/health should show
 
 ### Opening the student app on your phone
 
-1. Install **Expo Go** from the Play Store / App Store.
+1. Install **Expo Go** from the Play Store / App Store, and **update it** if it is already installed. The project uses Expo SDK 58; an older Expo Go shows _"Project is incompatible with this version of Expo Go"_.
 2. Phone and computer must be on the **same Wi-Fi**.
 3. Scan the QR code from the `pnpm dev:mobile` terminal.
 4. In that terminal, find the line `[ENNEL] API_URL = http://<your computer's address>:3000`. If it says `localhost` while you use a phone, see section 6.
+
+### Opening the student app in a web browser (no phone needed)
+
+Press **`w`** in the `pnpm dev:mobile` terminal. The app opens at http://localhost:8081 and talks to the API on the same computer. It's handy for quick checks, but the real app is the phone version:
+
+- The web version forgets your sign-in when you reload the page (it keeps the login only in memory, because browsers have no secure keychain).
+- The API accepts requests from any `localhost` page only while `NODE_ENV=development`. If you see a **CORS** error in the browser console (F12), the API is not in development mode or not running.
 
 To test registration, use a reference number that exists in the roster: `24900001` to `24900004` if you ran `pnpm db:seed:dev`, or one you imported in the admin dashboard under Students → Import roster.
 
@@ -223,6 +230,11 @@ The app shows _"Cannot reach the ENNEL server at http://…:3000"_.
 | Error about a missing column or table                                                          | `pnpm db:migrate`                                                                             |
 | Admin forgot password and is locked out                                                        | `pnpm db:seed` does **not** reset it. Ask another Super Admin to reset it from Staff & roles. |
 | Everything is weird after pulling new code                                                     | `pnpm install`, `pnpm build:shared`, `pnpm db:migrate`, then restart all terminals            |
+| Phone: _"Project is incompatible with this version of Expo Go"_                                | Update Expo Go from the Play Store / App Store (the project needs SDK 58)                     |
+| Student app still shows an old error or old styling after a fix                                | stop Expo (Ctrl+C) and start it with a cleared cache: `pnpm dev:mobile --clear`               |
+| Web: _"Cannot manually set color scheme, as dark mode is type 'media'"_                        | fixed in `apps/mobile/tailwind.config.js` (`darkMode: 'class'`); restart Expo with `--clear`  |
+| Expo says _"An update for expo is available"_ or _"packages may need updating"_                | `cd apps/mobile`, then `npx expo install --check`; ask before upgrading to a new SDK number   |
+| Browser console: _"blocked by CORS policy"_                                                    | the API only accepts the admin site, plus `localhost` pages in development; see section 3     |
 
 ---
 

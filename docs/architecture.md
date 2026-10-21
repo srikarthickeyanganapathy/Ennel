@@ -67,6 +67,7 @@ Dependencies point inward only. Admin modules reuse student domain functions (fo
 - **Idempotency:** `Idempotency-Key` header on booking, cancellation, leave and complaint POSTs; `idempotency_keys` stores the response in the same transaction (ADR-0016).
 - **Time:** business time Asia/Kolkata; instants stored UTC; business dates as `DATE`; slot times as minutes since IST midnight (ADR-0002).
 - **Policy:** `mess_policy` singleton with `version`; services load it once per use case and pass it to domain functions (ADR-0005..0013).
+- **CORS:** `isAllowedOrigin` (`src/config/cors.ts`) allows the admin origin (`ADMIN_WEB_ORIGIN`) and, only when `NODE_ENV=development`, any `localhost` origin for the student app's web preview. Phones are not browsers and are unaffected.
 - **Rate limiting:** `@RateLimit({ name, limit, windowSeconds })` + `RateLimitGuard`, backed by a Redis fixed-window counter (`RedisRateLimiter`, fails open). Tests swap in `InMemoryRateLimiter`.
 - **Files:** `FileStorageProvider` (local disk under `STORAGE_DIR`) stores uploads under server-generated keys. `FileUrlSigner` issues HMAC-signed URLs (`FILE_SIGNING_SECRET`, 15-minute expiry) served by `GET /api/v1/files/*`. Upload types are detected from content (`detectImageType`).
 - **Student auth:** `StudentJwtAuthGuard` verifies student access tokens and sets `@CurrentStudent()`. Refresh tokens are random 256-bit values stored as SHA-256 hashes; rotation marks the old session replaced in the same transaction as the new one, so a concurrent reuse is detected.
