@@ -3,11 +3,8 @@ import { ErrorCode } from '@ennel/shared';
 import { hash, verify } from 'argon2';
 import { AppError } from '../../../../common/errors/app-error';
 import { Clock } from '../../../../infrastructure/clock/clock';
-import {
-  isLockedOut,
-  recordFailedLogin,
-  recordSuccessfulLogin,
-} from '../../../auth/domain/login-lockout';
+import { isLockedOut, recordSuccessfulLogin } from '../../../auth/domain/login-lockout';
+import { recordLoginFailure } from '../../../auth/services/record-login-failure';
 import { type ClientMeta } from '../../../auth/services/student-session-issuer.service';
 import { type StaffCredentials, StaffAuthRepository } from '../repositories/staff-auth.repository';
 import { StaffAccessTokenService } from './staff-access-token.service';
@@ -59,8 +56,7 @@ export class LoginStaffService {
   }
 
   private async handleFailure(member: StaffCredentials, now: Date): Promise<never> {
-    const next = recordFailedLogin(member, now);
-    await this.staff.saveLoginState(member.id, next);
+    const next = await recordLoginFailure(this.staff, member.id, member, now);
     if (isLockedOut(next, now)) throw lockedError(next.lockedUntil);
     throw new AppError(ErrorCode.INVALID_CREDENTIALS, INVALID_CREDENTIALS);
   }

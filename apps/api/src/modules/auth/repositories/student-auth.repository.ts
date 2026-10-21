@@ -5,6 +5,7 @@ import { Prisma, type StudentStatus } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../infrastructure/database/prisma.service';
 import { type TransactionClient } from '../../../infrastructure/database/transaction-runner';
 import { type LoginLockState } from '../domain/login-lockout';
+import { type LoginLockStore } from '../services/record-login-failure';
 
 export interface RosterForRegistration {
   rosterEntryId: string;
@@ -36,7 +37,7 @@ export interface StudentCredentials extends LoginLockState {
   isOnboardingComplete: boolean;
 }
 
-export abstract class StudentAuthRepository {
+export abstract class StudentAuthRepository implements LoginLockStore {
   abstract findRosterForRegistration(
     referenceNumber: string,
     tx?: TransactionClient,
@@ -45,6 +46,12 @@ export abstract class StudentAuthRepository {
   abstract findCredentials(referenceNumber: string): Promise<StudentCredentials | null>;
   abstract findCredentialsById(id: string): Promise<StudentCredentials | null>;
   abstract saveLoginState(studentId: string, state: LoginLockState): Promise<void>;
+  abstract readLockState(studentId: string): Promise<LoginLockState | null>;
+  abstract replaceLockState(
+    studentId: string,
+    expected: LoginLockState,
+    next: LoginLockState,
+  ): Promise<boolean>;
   abstract resetPassword(
     studentId: string,
     passwordHash: string,
@@ -130,6 +137,29 @@ export class PrismaStudentAuthRepository extends StudentAuthRepository {
 
   async saveLoginState(studentId: string, state: LoginLockState): Promise<void> {
     await this.prisma.student.update({ where: { id: studentId }, data: state });
+  }
+
+  readLockState(studentId: string): Promise<LoginLockState | null> {
+    return this.prisma.student.findUnique({
+      where: { id: studentId },
+      select: { failedLoginCount: true, lockedUntil: true },
+    });
+  }
+
+  async replaceLockState(
+    studentId: string,
+    expected: LoginLockState,
+    next: LoginLockState,
+  ): Promise<boolean> {
+    const result = await this.prisma.student.updateMany({
+      where: {
+        id: studentId,
+        failedLoginCount: expected.failedLoginCount,
+        lockedUntil: expected.lockedUntil,
+      },
+      data: next,
+    });
+    return result.count === 1;
   }
 
   async resetPassword(

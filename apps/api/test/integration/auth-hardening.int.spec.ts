@@ -2,9 +2,11 @@ import { randomBytes } from 'node:crypto';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { SecretBox } from '../../src/infrastructure/crypto/secret-box';
-import { resetDatabase } from './helpers/database';
+import { resetDatabase, seedFixtures } from './helpers/database';
 import { createStaff, seedRoles, STAFF_PASSWORD } from './helpers/staff';
 import { createTestApp, type TestApp } from './helpers/test-app';
+
+const PASSWORD = 'correct-horse-1';
 
 /** Regression tests for lockout and one-time-code limits (BR-AUTH-3, BR-AUTH-6). */
 describe('authentication hardening', () => {
@@ -50,6 +52,36 @@ describe('authentication hardening', () => {
     }
     // Five wrong second factors lock the account even though each round re-entered the password.
     expect(statuses.at(-1)).toBe(423);
+    const stored = await ctx.prisma.staffUser.findUniqueOrThrow({ where: { id: staff.id } });
+    expect(stored.lockedUntil).not.toBeNull();
+  });
+
+  it('locks a student after parallel wrong passwords, losing no failure', async () => {
+    await seedFixtures(ctx.prisma);
+    await http()
+      .post('/api/v1/auth/register')
+      .send({ referenceNumber: '24900001', password: PASSWORD, confirmPassword: PASSWORD })
+      .expect(201);
+    await Promise.all(
+      Array.from({ length: 6 }, () =>
+        http()
+          .post('/api/v1/auth/login')
+          .send({ referenceNumber: '24900001', password: 'wrong-password' }),
+      ),
+    );
+    const student = await ctx.prisma.student.findFirstOrThrow();
+    expect(student.lockedUntil).not.toBeNull();
+  });
+
+  it('locks a staff member after parallel wrong passwords', async () => {
+    const staff = await createStaff(ctx.prisma, ['AUDITOR']);
+    await Promise.all(
+      Array.from({ length: 6 }, () =>
+        http()
+          .post('/api/v1/admin/auth/login')
+          .send({ email: staff.email, password: 'wrong-password-x' }),
+      ),
+    );
     const stored = await ctx.prisma.staffUser.findUniqueOrThrow({ where: { id: staff.id } });
     expect(stored.lockedUntil).not.toBeNull();
   });
