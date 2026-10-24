@@ -66,7 +66,7 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-BOOK-6** Default Booking for a meal applies only when the overall switch is on, the meal switch is on, the meal is not auto-disabled by the no-show engine, and a slot is set (Spec §8.1).
 - **BR-BOOK-7** There is at most one booking per student/date/meal. A change of slot or diet updates that row and appends a `booking_events` entry.
 - **BR-BOOK-8** Students may book dates from today up to today + `bookingHorizonDays` (_policy_, default **7**, ADR-0011).
-- **BR-BOOK-9** Phase 4 meal cards: a meal with Default Booking on but no booking yet is labelled "Not Booked" (the nightly job that creates Default Booking rows comes in Phase 5). Student writes (book, change, cancel, cancel today's meals) are idempotent (BR-IDEM-1) and return the updated card. A cancelled meal can be booked again until the last slot starts (BR-DEAD-5).
+- **BR-BOOK-9** A meal with Default Booking on but no booking yet (for example a full slot under `ASK_STUDENT`) is labelled "Not Booked". Student writes (book, change, cancel, cancel today's meals) are idempotent (BR-IDEM-1) and return the updated card. A cancelled meal can be booked again until the last slot starts (BR-DEAD-5).
 - **BR-BOOK-10** Staff overrides (Admin §H, ADR-0022): book on behalf, cancel, move and correct status (Booked, Cancelled, Meal Completed only) with a mandatory reason and the version shown; they skip student deadlines and the booking period but follow closures, leave and capacity (except Meal Completed). Each writes an origin `ADMIN` date exception, sets the staff member as last actor (shown as "Updated by mess staff"), adds a booking event, and writes an override audit entry in the same transaction. Bulk cancel or move previews first, skips bookings that cannot change, and audits each change.
 
 ## BR-DEAD: Deadlines (Rule 6)
@@ -103,6 +103,9 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
   - `ASK_STUDENT`: no booking is created; the student is notified to pick a slot.
   - `AUTO_NEXT_AVAILABLE`: the next later active slot with space is booked (wrapping to earlier slots if none), and the student is notified of the change. Their preference is not changed.
 - **BR-DEF-3** Turning the overall switch off cancels future `DEFAULT`-source bookings that are still before their cancellation deadline and keeps saved preferences. Turning it on regenerates them.
+- **BR-DEF-4** Saving preferences (overall switch, one meal, or all meals) and finishing first-time setup reconcile the student's upcoming days immediately, in the same transaction. Only bookings owned by the recurring rule are created, moved or cancelled; one-day changes by the student and staff overrides are kept. The response lists what changed (Spec §8.3) and how many bookings were updated. (ADR-0023)
+- **BR-DEF-5** The nightly job runs at 00:30 IST in the worker process, one `job_runs` row per business date; finished runs are skipped, a run stuck in RUNNING for over an hour is retried, and a missed day runs when the worker starts. (ADR-0023)
+- **BR-DEF-6** A recurring booking cancelled by the system is labelled "Not Booked — Default Off". A meal auto-disabled by the no-show engine (BR-NS-5) cannot be switched back on by the student; staff or an approved appeal do that.
 
 ## BR-LEAVE: Leave (Rule 9, Spec §11)
 
@@ -134,7 +137,9 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 ## BR-CLOS: Closures (Admin §F)
 
 - **BR-CLOS-1** Applying a closure marks affected `BOOKED` bookings `CANCELLED_BY_CLOSURE`, notifies the students and blocks No-shows for those meals.
-- **BR-CLOS-2** Removing a closure re-runs the resolver for affected student/meals. Bookings are restored to `BOOKED` where intent still resolves to a booking and capacity allows; otherwise the student is notified to rebook. (ADR-0017)
+- **BR-CLOS-2** Removing a closure re-runs the resolver for affected student/meals. Bookings are restored to `BOOKED` where intent still resolves to a booking and capacity allows; otherwise the student is notified to rebook. Only slots that have not started are restored; a full slot follows BR-DEF-2. (ADR-0017, ADR-0023)
+- **BR-CLOS-3** One active closure per meal and date; closures cannot be set for past dates. Applying and removing each need a reason and write one audit entry in the same transaction. The admin sees how many bookings will be cancelled before confirming.
+- **BR-CLOS-4** Special-meal days are not closures: they use the menu's special flag and per-date capacity overrides.
 
 ## BR-CMP: Complaints (Rule 12, Spec §12)
 
@@ -164,7 +169,7 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-ONB-3** "Save & Continue" saves profile changes, all three meal preferences and the overall Default Booking switch in one transaction, then marks onboarding complete. College-controlled values in the request are ignored (BR-AUTH-7).
 - **BR-ONB-4** An enabled Lunch or Dinner preference needs an active slot of that meal. Breakfast's single window is filled in automatically, also while Breakfast is off, so switching it on later needs no slot choice.
 - **BR-ONB-5** Every meal starts OFF in the setup screen. Nothing is booked until the student switches a meal on.
-- **BR-ONB-6** Future bookings are generated from these preferences by the booking engine (Phase 4/5). Saving onboarding does not create bookings yet.
+- **BR-ONB-6** Finishing setup creates the upcoming Default Bookings from these preferences at once (BR-DEF-4).
 - **BR-ONB-7** Profile photos: JPEG, PNG, WebP or HEIC detected from file content, ≤5 MB, served only through signed URLs that expire after 15 minutes.
 
 ## BR-IDEM: Idempotency (Rule 13)

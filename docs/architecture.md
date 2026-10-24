@@ -9,7 +9,7 @@ Status: Phase 0 (approved 2026-10-19). Keep this file current when a module, pro
                     ├── NestJS API (one app) ─┤
  Vite admin web  ───┘   /api/v1/*            └── Redis 7 (BullMQ queues, rate-limit counters)
                         /api/v1/admin/*
-                        BullMQ worker process (same codebase, `pnpm --filter api worker`)
+                        BullMQ worker process (same codebase, `pnpm dev:worker`, entry `src/worker.ts`)
 ```
 
 Out of scope: all deployment (images, pipelines, cloud). Local development uses `docker-compose.dev.yml` with only Postgres and Redis.
@@ -85,14 +85,14 @@ Student intent lives in three separate tables that never overwrite each other (R
 
 ### 3.6 Modules
 
-Student-facing: `auth`, `students`, `mess-config`, `slots` (live availability, Phase 3), `menus`, `bookings` (resolver, meal cards, book/change/cancel, Phase 4), `idempotency` (ADR-0016), `forecasting` (show-up rate, BR-FC),, `default-preferences`, `plan-ahead`, `leaves`, `no-shows`, `attendance`, `complaints`, `notifications`, `jobs`.
+Student-facing: `auth`, `students`, `mess-config`, `slots` (live availability, Phase 3), `menus`, `bookings` (resolver, meal cards, book/change/cancel, Phase 4; `BookingReconciler`, `SeatAllocator` and the full-slot fallback, Phase 5), `idempotency` (ADR-0016), `forecasting` (show-up rate, BR-FC), `default-preferences` (Spec §8, Phase 5), `plan-ahead`, `leaves`, `no-shows`, `attendance`, `complaints`, `notifications`, `jobs`.
 Staff-facing (under `modules/admin/`): `admin-auth`, `staff-users`, `rbac`, `audit-log`, `admin-dashboard`, `admin-mess-config`, `admin-menus`, `admin-closures`, `admin-students`, `admin-bookings`, `admin-attendance`, `admin-no-shows`, `admin-leaves`, `admin-complaints`, `admin-announcements`, `admin-forecasting`, `admin-reports`, `admin-system`.
 
 Booking writes go through one service, `BookingCommandsService`, used by students (`StudentBookingsService`, wrapped in `IdempotencyService`) and staff (`AdminBookingOverridesService`, `BulkBookingsService`, wrapped in an audited transaction). It writes the date exception, the booking row and a booking event together (ADR-0003) and takes the slot/date advisory lock before counting seats (ADR-0004). `BookingDayService` builds the Home meal cards from `resolveEffectiveBooking` and `meal-card-rules`.
 
 ### 3.7 Background jobs (BullMQ, `modules/jobs`)
 
-`generate-default-bookings` (nightly), `close-attendance-window` (per meal window), `evaluate-no-show-thresholds`, `send-deadline-reminders`, `send-scheduled-announcements`, `process-roster-import`, `generate-large-report`. Every run records a `job_runs` row keyed by `(job_name, run_key)` so re-runs are no-ops, and every job takes time from `Clock`.
+`generate-default-bookings` (built in Phase 5: 00:30 IST via `upsertJobScheduler`, plus a catch-up run when the worker starts; ADR-0023), `close-attendance-window` (per meal window), `evaluate-no-show-thresholds`, `send-deadline-reminders`, `send-scheduled-announcements`, `process-roster-import`, `generate-large-report`. Every run records a `job_runs` row keyed by `(job_name, run_key)` so re-runs are no-ops, and every job takes time from `Clock`.
 
 ## 4. Clients
 

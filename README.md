@@ -51,6 +51,7 @@ Use one terminal per command:
 | 2        | `pnpm dev:api`    | API on http://localhost:3000, Swagger at http://localhost:3000/api/docs            |
 | 3        | `pnpm dev:admin`  | Admin dashboard on http://localhost:5173 (proxies `/api` to the API)               |
 | 4        | `pnpm dev:mobile` | Expo dev server; scan the QR code with Expo Go, or press `a` / `i` for an emulator |
+| 5        | `pnpm dev:worker` | Background jobs (BullMQ): nightly Default Booking generation at 00:30 IST          |
 
 Postgres and Redis must be up (`pnpm db:up`; stop them with `pnpm db:down`). If you change `packages/shared` while the API is running without `dev:shared`, run `pnpm build:shared` and restart the API.
 
