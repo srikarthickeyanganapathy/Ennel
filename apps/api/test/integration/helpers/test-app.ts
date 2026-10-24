@@ -35,7 +35,9 @@ export async function createTestApp(): Promise<TestApp> {
     .overrideProvider(RateLimiter)
     .useValue(rateLimiter)
     .compile();
-  const app = moduleRef.createNestApplication({ logger: false });
+  const app = moduleRef.createNestApplication({
+    logger: process.env.TEST_LOGS ? ['error'] : false,
+  });
   app.setGlobalPrefix(API_PREFIX);
   // A bound port avoids supertest re-binding the server for each request.
   await app.listen(0, '127.0.0.1');

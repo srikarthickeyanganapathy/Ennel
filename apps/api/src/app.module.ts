@@ -22,6 +22,8 @@ import { FilesModule } from './modules/files/files.module';
 import { HealthModule } from './modules/health/health.module';
 import { MessConfigModule } from './modules/mess-config/mess-config.module';
 import { SlotsModule } from './modules/slots/slots.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { StudentsModule } from './modules/students/students.module';
 
 @Module({
@@ -38,6 +40,8 @@ import { StudentsModule } from './modules/students/students.module';
     AuthModule,
     MessConfigModule,
     SlotsModule,
+    IdempotencyModule,
+    BookingsModule,
     StudentsModule,
     // Staff surface (/api/v1/admin)
     AdminCoreModule,
