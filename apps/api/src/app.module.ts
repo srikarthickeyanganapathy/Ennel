@@ -23,6 +23,7 @@ import { HealthModule } from './modules/health/health.module';
 import { MessConfigModule } from './modules/mess-config/mess-config.module';
 import { SlotsModule } from './modules/slots/slots.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
+import { AdminBookingsModule } from './modules/admin/admin-bookings/admin-bookings.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { StudentsModule } from './modules/students/students.module';
 
@@ -42,6 +43,7 @@ import { StudentsModule } from './modules/students/students.module';
     SlotsModule,
     IdempotencyModule,
     BookingsModule,
+    AdminBookingsModule,
     StudentsModule,
     // Staff surface (/api/v1/admin)
     AdminCoreModule,

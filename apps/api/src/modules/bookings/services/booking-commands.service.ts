@@ -192,6 +192,60 @@ export class BookingCommandsService {
     return outcomeOf(booking, await this.mealTypeOf(booking.slot.id, tx));
   }
 
+  /**
+   * Admin §H status correction. Only Booked, Cancelled and Meal Completed are corrected here;
+   * leave, closure and no-show states belong to their own processes (ADR-0022).
+   */
+  async correctStatus(
+    actor: Extract<BookingActor, { type: 'STAFF' }>,
+    booking: BookingRow,
+    status: CorrectableStatus,
+    tx: TransactionClient,
+  ): Promise<BookingOutcome> {
+    if (booking.status === status) throw notAllowed('The booking already has this status.');
+    if (!CORRECTABLE.has(booking.status)) {
+      throw notAllowed('This status is managed by leave, closures or no-show review.');
+    }
+    const { now, policy } = await this.context(booking.mealDate, actor);
+    const key = { studentId: booking.studentId, mealId: booking.mealId, date: booking.mealDate };
+    // Booking again takes a seat; Meal Completed records a meal that happened, so it is not capped.
+    const isOverCapacity =
+      status === BookingStatus.BOOKED && booking.status === BookingStatus.CANCELLED
+        ? await this.reserveSeat(booking.slot.id, booking.mealDate, policy, tx)
+        : booking.isOverCapacity && status !== BookingStatus.CANCELLED;
+    if (status !== BookingStatus.COMPLETED) {
+      const intent =
+        status === BookingStatus.BOOKED
+          ? {
+              action: 'BOOK' as const,
+              slotId: booking.slot.id,
+              dietType: booking.dietType,
+              origin: originFor(actor),
+            }
+          : { action: 'SKIP' as const, slotId: null, dietType: null, origin: originFor(actor) };
+      await this.bookings.saveDateException(key, intent, tx);
+    }
+    const write = {
+      ...actorFields(actor),
+      status,
+      isOverCapacity,
+      cancelledAt: status === BookingStatus.CANCELLED ? now : null,
+    };
+    if (!(await this.bookings.updateBooking(booking.id, booking.version, write, tx)))
+      throw bookingChanged();
+    await this.bookings.addEvent(
+      {
+        ...eventActor(actor),
+        bookingId: booking.id,
+        type: 'STATUS_CORRECTED',
+        fromStatus: booking.status,
+        toStatus: status,
+      },
+      tx,
+    );
+    return outcomeOf(booking, await this.mealTypeOf(booking.slot.id, tx));
+  }
+
   private async context(
     date: BusinessDate,
     actor: BookingActor,
@@ -332,6 +386,13 @@ export class BookingCommandsService {
     return slot.mealType;
   }
 }
+
+export type CorrectableStatus = 'BOOKED' | 'CANCELLED' | 'COMPLETED';
+const CORRECTABLE = new Set<BookingStatus>([
+  BookingStatus.BOOKED,
+  BookingStatus.CANCELLED,
+  BookingStatus.COMPLETED,
+]);
 
 function assertBooked(booking: BookingRow): void {
   if (booking.status !== BookingStatus.BOOKED)
