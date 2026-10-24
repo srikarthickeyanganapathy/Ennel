@@ -7,3 +7,4 @@ export * from './mess-config.schema.js';
 export * from './policy.schema.js';
 export * from './menus.schema.js';
 export * from './admin-bookings.schema.js';
+export * from './dashboard.schema.js';
