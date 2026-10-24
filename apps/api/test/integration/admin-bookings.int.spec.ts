@@ -197,7 +197,9 @@ describe('admin bookings (Admin §H)', () => {
     expect(applied.body.skipped.map((item: { reason: string }) => item.reason)).toContain(
       'This slot is full. Please choose another slot.',
     );
-    expect(await ctx.prisma.auditLog.count({ where: { action: 'booking.bulk.move' } })).toBe(1);
+    // audit_logs is append-only and never reset, so count only this test's bookings.
+    const audited = { action: 'booking.bulk.move', entityId: { in: [first, second] } };
+    expect(await ctx.prisma.auditLog.count({ where: audited })).toBe(1);
   });
 
   it('keeps the grid away from roles without bookings permissions', async () => {
