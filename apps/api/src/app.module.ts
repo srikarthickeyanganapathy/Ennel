@@ -26,6 +26,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
 import { AdminBookingsModule } from './modules/admin/admin-bookings/admin-bookings.module';
 import { AdminDashboardModule } from './modules/admin/admin-dashboard/admin-dashboard.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
+import { JobsModule } from './modules/jobs/jobs.module';
 import { StudentsModule } from './modules/students/students.module';
 
 @Module({
@@ -44,6 +45,7 @@ import { StudentsModule } from './modules/students/students.module';
     SlotsModule,
     IdempotencyModule,
     BookingsModule,
+    JobsModule,
     AdminBookingsModule,
     AdminDashboardModule,
     StudentsModule,

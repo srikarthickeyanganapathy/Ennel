@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "nest start --watch",
+    "dev:worker": "nest start --watch --entryFile worker",
     "build": "nest build",
     "start": "node dist/main.js",
+    "start:worker": "node dist/worker.js",
     "typecheck": "prisma generate --no-hints && tsc -p tsconfig.json --noEmit && tsc -p tsconfig.seed.json",
     "test": "pnpm test:unit && vitest run -c vitest.integration.config.mts",
     "prisma:generate": "prisma generate",
@@ -26,6 +28,7 @@
     "@prisma/adapter-pg": "7.10.1",
     "@prisma/client": "7.10.1",
     "argon2": "^0.45",
+    "bullmq": "^5",
     "csv-parse": "^7",
     "csv-stringify": "^6.9",
     "exceljs": "^4.4",

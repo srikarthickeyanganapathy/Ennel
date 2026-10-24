@@ -17,6 +17,7 @@
     "db:down": "docker compose -f docker-compose.dev.yml down",
     "prepare": "husky",
     "dev:api": "pnpm --filter @ennel/api dev",
+    "dev:worker": "pnpm --filter @ennel/api dev:worker",
     "dev:admin": "pnpm --filter @ennel/admin dev",
     "dev:mobile": "pnpm --filter @ennel/mobile start",
     "db:migrate": "pnpm --filter @ennel/api prisma:migrate",

@@ -13,14 +13,8 @@ import { type TransactionClient } from '../../../infrastructure/database/transac
 import { type MessPolicy } from '../../mess-config/domain/mess-policy';
 import { GetMessPolicyService } from '../../mess-config/services/get-mess-policy.service';
 import { isWithinBookingHorizon, lastBookableDate } from '../../slots/domain/slot-availability';
-import { isMealCoveredByLeave } from '../domain/leave-coverage';
 import { deriveBookingLabel, mealActions } from '../domain/meal-card-rules';
-import {
-  type DefaultIntent,
-  defaultChoice,
-  resolveEffectiveBooking,
-  resolveRecurring,
-} from '../domain/resolve-effective-booking';
+import { defaultChoice } from '../domain/resolve-effective-booking';
 import {
   type BookingRow,
   BookingsRepository,
@@ -28,6 +22,7 @@ import {
   type StudentDay,
 } from '../repositories/bookings.repository';
 import { notAllowed } from './booking-errors';
+import { resolveMeal } from './meal-resolution';
 
 interface CardContext {
   now: Date;
@@ -82,19 +77,11 @@ export class BookingDayService {
 }
 
 function toCard(meal: MealDayRow, context: CardContext): MealCard {
-  const isOnLeave = context.day.leaves.some((leave) =>
-    isMealCoveredByLeave(leave, context.date, meal.mealType),
+  const { isClosed, isOnLeave, defaultIntent, resolution, recurring } = resolveMeal(
+    meal,
+    context.day,
+    context.date,
   );
-  const isClosed = meal.closureTitle !== null;
-  const defaultIntent = toDefaultIntent(meal, context.day.defaultBookingEnabled);
-  const resolution = resolveEffectiveBooking({
-    isClosed,
-    isOnApprovedLeave: isOnLeave,
-    dateException: meal.dateException,
-    weekdayRule: meal.weekdayRule,
-    defaultIntent,
-  });
-  const recurring = resolveRecurring(meal.weekdayRule, defaultIntent);
   const { booking } = meal;
   return {
     mealType: meal.mealType,
@@ -126,16 +113,6 @@ function toCard(meal: MealDayRow, context: CardContext): MealCard {
       booking: booking && { status: booking.status, slotStartMinute: booking.slot.startMinute },
       policy: context.policy,
     }),
-  };
-}
-
-function toDefaultIntent(meal: MealDayRow, isOverallEnabled: boolean): DefaultIntent {
-  return {
-    isOverallEnabled,
-    isMealEnabled: meal.preference?.isEnabled ?? false,
-    isAutoDisabled: meal.preference?.isAutoDisabled ?? false,
-    slotId: meal.preference?.slotId ?? undefined,
-    dietType: meal.preference?.dietType,
   };
 }
 

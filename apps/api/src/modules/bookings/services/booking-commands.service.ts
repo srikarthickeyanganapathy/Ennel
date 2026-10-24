@@ -22,6 +22,7 @@ import {
   type SlotRow,
 } from '../repositories/bookings.repository';
 import { BookingDayService } from './booking-day.service';
+import { SeatAllocator } from './seat-allocator.service';
 import { bookingChanged, deadlinePassed, notAllowed, slotUnavailable } from './booking-errors';
 
 /** Who is acting. Staff skip student deadlines but must give a reason (BR-DEAD-7, Admin §H). */
@@ -57,6 +58,7 @@ export interface BookingOutcome {
 export class BookingCommandsService {
   constructor(
     private readonly bookings: BookingsRepository,
+    private readonly seats: SeatAllocator,
     private readonly days: BookingDayService,
     private readonly policies: GetMessPolicyService,
     private readonly clock: Clock,
@@ -70,7 +72,7 @@ export class BookingCommandsService {
     const { now, policy } = await this.context(command.date, actor);
     const slot = await this.requireSlot(command.slotId, command.mealType, tx);
     const existing = await this.assertBookable(actor, command, slot, now, tx);
-    const isOverCapacity = await this.reserveSeat(slot.id, command.date, policy, tx);
+    const isOverCapacity = await this.seats.reserve(slot.id, command.date, policy, tx);
     const key = { studentId: command.studentId, mealId: slot.mealId, date: command.date };
     const source = originFor(actor);
     await this.bookings.saveDateException(
@@ -211,7 +213,7 @@ export class BookingCommandsService {
     // Booking again takes a seat; Meal Completed records a meal that happened, so it is not capped.
     const isOverCapacity =
       status === BookingStatus.BOOKED && booking.status === BookingStatus.CANCELLED
-        ? await this.reserveSeat(booking.slot.id, booking.mealDate, policy, tx)
+        ? await this.seats.reserve(booking.slot.id, booking.mealDate, policy, tx)
         : booking.isOverCapacity && status !== BookingStatus.CANCELLED;
     if (status !== BookingStatus.COMPLETED) {
       const intent =
@@ -298,24 +300,6 @@ export class BookingCommandsService {
     return existing;
   }
 
-  /** BR-CAP-4, ADR-0004/0005: the seat count is read under the slot/date lock. */
-  private async reserveSeat(
-    slotId: string,
-    date: BusinessDate,
-    policy: MessPolicy,
-    tx: TransactionClient,
-  ): Promise<boolean> {
-    await this.bookings.lockSlot(slotId, date, tx);
-    const [seats, capacity] = [
-      await this.bookings.seatsInUse(slotId, date, tx),
-      await this.bookings.officialCapacity(slotId, date, tx),
-    ];
-    if (seats < capacity) return false;
-    if (!policy.allowOverCapacityBooking)
-      throw slotUnavailable('This slot is full. Please choose another slot.');
-    return true;
-  }
-
   private async prepareSlotChange(
     actor: BookingActor,
     booking: BookingRow,
@@ -332,7 +316,10 @@ export class BookingCommandsService {
       throw slotUnavailable('This slot has already started.');
     }
     const policy = await this.policies.execute();
-    return { slot, isOverCapacity: await this.reserveSeat(slot.id, booking.mealDate, policy, tx) };
+    return {
+      slot,
+      isOverCapacity: await this.seats.reserve(slot.id, booking.mealDate, policy, tx),
+    };
   }
 
   private async recordChanges(
