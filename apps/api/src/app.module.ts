@@ -25,6 +25,7 @@ import { SlotsModule } from './modules/slots/slots.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { AdminBookingsModule } from './modules/admin/admin-bookings/admin-bookings.module';
 import { AdminDashboardModule } from './modules/admin/admin-dashboard/admin-dashboard.module';
+import { AdminClosuresModule } from './modules/admin/admin-closures/admin-closures.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { StudentsModule } from './modules/students/students.module';
@@ -48,6 +49,7 @@ import { StudentsModule } from './modules/students/students.module';
     JobsModule,
     AdminBookingsModule,
     AdminDashboardModule,
+    AdminClosuresModule,
     StudentsModule,
     // Staff surface (/api/v1/admin)
     AdminCoreModule,
