@@ -7,9 +7,10 @@ export interface NavItem {
   anyOf: PermissionKey[];
 }
 
-// Only pages that exist are listed; later phases add theirs (bookings, attendance, leaves, ...).
+// Only pages that exist are listed; later phases add theirs (attendance, leaves, ...).
 export const NAV_ITEMS: NavItem[] = [
   { label: 'Dashboard', path: '/', anyOf: ['dashboard:read', 'dashboard:read-today'] },
+  { label: 'Bookings', path: '/bookings', anyOf: ['bookings:read'] },
   { label: 'Students', path: '/students', anyOf: ['students:read', 'roster:import'] },
   { label: 'Menus', path: '/menus', anyOf: ['menus:read'] },
   { label: 'Mess configuration', path: '/mess-config', anyOf: ['mess-config:read'] },

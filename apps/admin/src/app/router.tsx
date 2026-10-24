@@ -14,6 +14,7 @@ import { RosterImportPage } from '@/features/students/pages/RosterImportPage';
 import { StudentDetailPage } from '@/features/students/pages/StudentDetailPage';
 import { StudentsPage } from '@/features/students/pages/StudentsPage';
 import { AppShell } from '@/shared/layout/AppShell';
+import { BookingsPage } from '@/features/bookings/pages/BookingsPage';
 import { RequireAuth, RequirePermission } from './route-guards';
 
 export const router = createBrowserRouter([
@@ -28,6 +29,14 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'account', element: <AccountPage /> },
+          {
+            path: 'bookings',
+            element: (
+              <RequirePermission anyOf={['bookings:read']}>
+                <BookingsPage />
+              </RequirePermission>
+            ),
+          },
           {
             path: 'students',
             element: (

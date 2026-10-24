@@ -19,13 +19,15 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
     expect(labelsFor(StaffRole.AUDITOR)).toEqual(['Policy', 'Audit log']);
   });
 
-  it('shows Wardens students but not staff management', () => {
+  it('shows Wardens students but not bookings or staff management', () => {
     const labels = labelsFor(StaffRole.WARDEN);
     expect(labels).toContain('Students');
+    expect(labels).not.toContain('Bookings');
     expect(labels).not.toContain('Staff & roles');
   });
 
   it('shows the Super Admin everything', () => {
-    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(8);
+    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(9);
+    expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('Bookings');
   });
 });
