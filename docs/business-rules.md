@@ -66,6 +66,8 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-BOOK-6** Default Booking for a meal applies only when the overall switch is on, the meal switch is on, the meal is not auto-disabled by the no-show engine, and a slot is set (Spec §8.1).
 - **BR-BOOK-7** There is at most one booking per student/date/meal. A change of slot or diet updates that row and appends a `booking_events` entry.
 - **BR-BOOK-8** Students may book dates from today up to today + `bookingHorizonDays` (_policy_, default **7**, ADR-0011).
+- **BR-BOOK-9** Phase 4 meal cards: a meal with Default Booking on but no booking yet is labelled "Not Booked" (the nightly job that creates Default Booking rows comes in Phase 5). Student writes (book, change, cancel, cancel today's meals) are idempotent (BR-IDEM-1) and return the updated card. A cancelled meal can be booked again until the last slot starts (BR-DEAD-5).
+- **BR-BOOK-10** Staff overrides (Admin §H, ADR-0022): book on behalf, cancel, move and correct status (Booked, Cancelled, Meal Completed only) with a mandatory reason and the version shown; they skip student deadlines and the booking period but follow closures, leave and capacity (except Meal Completed). Each writes an origin `ADMIN` date exception, sets the staff member as last actor (shown as "Updated by mess staff"), adds a booking event, and writes an override audit entry in the same transaction. Bulk cancel or move previews first, skips bookings that cannot change, and audits each change.
 
 ## BR-DEAD: Deadlines (Rule 6)
 
@@ -177,3 +179,4 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 ## BR-FC: Forecasting (Admin §N)
 
 - **BR-FC-1** Expected plates = booked count × show-up rate. The show-up rate is the rolling average of attended ÷ booked for that meal over the last `forecastLookbackDays` (default **14**) days with data. With fewer than 7 days of history, the forecast is flagged low-confidence and falls back to the available days, or to 1.0 when there are none.
+- **BR-FC-2** "Days with data" are past days with at least one attendance record or no-show for the meal, so a missing attendance feed never reads as 0% show-up. The rate is rounded to 4 decimals; expected plates are rounded up. Used by the admin dashboard now and the kitchen forecast in Phase 11 (`modules/forecasting/domain/show-up-rate.ts`).

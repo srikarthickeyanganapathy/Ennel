@@ -85,8 +85,10 @@ Student intent lives in three separate tables that never overwrite each other (R
 
 ### 3.6 Modules
 
-Student-facing: `auth`, `students`, `mess-config`, `slots` (live availability, Phase 3), `menus`, `bookings`, `default-preferences`, `plan-ahead`, `leaves`, `no-shows`, `attendance`, `complaints`, `notifications`, `jobs`.
+Student-facing: `auth`, `students`, `mess-config`, `slots` (live availability, Phase 3), `menus`, `bookings` (resolver, meal cards, book/change/cancel, Phase 4), `idempotency` (ADR-0016), `forecasting` (show-up rate, BR-FC),, `default-preferences`, `plan-ahead`, `leaves`, `no-shows`, `attendance`, `complaints`, `notifications`, `jobs`.
 Staff-facing (under `modules/admin/`): `admin-auth`, `staff-users`, `rbac`, `audit-log`, `admin-dashboard`, `admin-mess-config`, `admin-menus`, `admin-closures`, `admin-students`, `admin-bookings`, `admin-attendance`, `admin-no-shows`, `admin-leaves`, `admin-complaints`, `admin-announcements`, `admin-forecasting`, `admin-reports`, `admin-system`.
+
+Booking writes go through one service, `BookingCommandsService`, used by students (`StudentBookingsService`, wrapped in `IdempotencyService`) and staff (`AdminBookingOverridesService`, `BulkBookingsService`, wrapped in an audited transaction). It writes the date exception, the booking row and a booking event together (ADR-0003) and takes the slot/date advisory lock before counting seats (ADR-0004). `BookingDayService` builds the Home meal cards from `resolveEffectiveBooking` and `meal-card-rules`.
 
 ### 3.7 Background jobs (BullMQ, `modules/jobs`)
 

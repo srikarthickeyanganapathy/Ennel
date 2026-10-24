@@ -47,21 +47,22 @@ Section 6 shows how to tell which one it is.
 
 The project is built in phases. Only Phases 0–2 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
 
-| Area                                                            | Status                                                                                            |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Student: register with a reference number, log in               | ✅ Works (Phase 1)                                                                                |
-| Student: first-time setup (profile, hostel, meals)              | ✅ Works (Phase 1)                                                                                |
-| Student: reset password with a code from the office             | ✅ Works (Phase 2)                                                                                |
-| Student: **slot availability** (Home → Check slot availability) | ✅ Works (Phase 3): live counts and labels; booking from it arrives in Phase 4                    |
-| Student: **Home tab**                                           | ⏳ Placeholder plus the availability card. The full Home with booking arrives in Phase 4          |
-| Student: **Profile tab**                                        | ⏳ Shows your name and Log Out. Viewing and editing your details (Spec §9) comes in a later phase |
-| Student: bookings, leave, no-shows, complaints                  | ⏳ Phases 4–10                                                                                    |
-| Admin: sign in, change password, 2FA, sessions                  | ✅ Works (Phase 2)                                                                                |
-| Admin: Staff & roles, Audit log                                 | ✅ Works (Phase 2)                                                                                |
-| Admin: Students, Import roster, reset codes                     | ✅ Works (Phase 2)                                                                                |
-| Admin: Mess configuration, Hostels, Policy, Menus               | ✅ Works (Phase 2)                                                                                |
-| Admin: **Dashboard** home page                                  | ⏳ Placeholder. Counts and charts need bookings (Phase 4)                                         |
-| Admin: bookings, attendance, leaves, complaints...              | ⏳ Phases 4–11 (not in the sidebar yet)                                                           |
+| Area                                                                                                         | Status                                                                                            |
+| ------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
+| Student: register with a reference number, log in                                                            | ✅ Works (Phase 1)                                                                                |
+| Student: first-time setup (profile, hostel, meals)                                                           | ✅ Works (Phase 1)                                                                                |
+| Student: reset password with a code from the office                                                          | ✅ Works (Phase 2)                                                                                |
+| Student: **slot availability** (Home → Check slot availability)                                              | ✅ Works (Phase 3): live counts and labels; booking from it arrives in Phase 4                    |
+| Student: **Home** (meals for a date, book, change slot, meal type, cancel, countdowns, Cancel Today's Meals) | ✅ Works (Phase 4)                                                                                |
+| Student: **Profile tab**                                                                                     | ⏳ Shows your name and Log Out. Viewing and editing your details (Spec §9) comes in a later phase |
+| Student: Default Booking page, Plan Ahead, My Bookings, leave, no-shows, complaints                          | ⏳ Phases 5–10                                                                                    |
+| Admin: sign in, change password, 2FA, sessions                                                               | ✅ Works (Phase 2)                                                                                |
+| Admin: Staff & roles, Audit log                                                                              | ✅ Works (Phase 2)                                                                                |
+| Admin: Students, Import roster, reset codes                                                                  | ✅ Works (Phase 2)                                                                                |
+| Admin: Mess configuration, Hostels, Policy, Menus                                                            | ✅ Works (Phase 2)                                                                                |
+| Admin: **Dashboard** (booked / expected / attended plates, slot occupancy, pending work, 7-day charts)       | ✅ Works (Phase 4)                                                                                |
+| Admin: **Bookings** (grid, book for a student, move, cancel, correct status, bulk actions)                   | ✅ Works (Phase 4)                                                                                |
+| Admin: closures, attendance, leaves, no-shows, complaints, announcements, reports                            | ⏳ Phases 5–11 (not in the sidebar yet)                                                           |
 
 ---
 
@@ -262,7 +263,9 @@ You'll get a fix much faster if you paste:
 | `pnpm lint`      | Style and project rules (for example: no database code outside repositories)     |
 | `pnpm test`      | Automated tests (Docker must be running; API tests use a separate test database) |
 
-Run all three before committing. If one fails, the first error message usually names the file and line.
+Run all three before committing.
+
+If an API integration test fails with only a status code (for example 500), run it again with server errors shown: set `TEST_LOGS=1` before the test command (in Git Bash: `TEST_LOGS=1 pnpm --filter @ennel/api test`). If one fails, the first error message usually names the file and line.
 
 ---
 
