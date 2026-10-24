@@ -1,3 +1,3 @@
-import { HomePlaceholderScreen } from '@/features/home/screens/HomePlaceholderScreen';
+import { HomeScreen } from '@/features/home/screens/HomeScreen';
 
-export default HomePlaceholderScreen;
+export default HomeScreen;

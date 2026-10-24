@@ -15,6 +15,8 @@ export interface RequestOptions<T> {
   schema?: ZodType<T>;
   /** Send the access token and refresh once on 401. Default true. */
   isAuthenticated?: boolean;
+  /** Extra headers, e.g. Idempotency-Key on booking writes (ADR-0016). */
+  headers?: Record<string, string>;
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions<T> = {}): Promise<T> {
@@ -31,7 +33,7 @@ async function send<T>(
   options: RequestOptions<T>,
   isAuthenticated: boolean,
 ): Promise<Response> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+  const headers: Record<string, string> = { Accept: 'application/json', ...options.headers };
   const token = useSessionStore.getState().accessToken;
   if (isAuthenticated && token) headers.Authorization = `Bearer ${token}`;
   if (options.body !== undefined) headers['Content-Type'] = 'application/json';
