@@ -11,7 +11,8 @@ export default defineConfig({
   server: {
     port: 5173,
     // The API runs on :3000; proxying keeps the refresh-token cookie same-origin (ADR-0015).
-    proxy: { '/api': 'http://localhost:3000' },
+    // ADMIN_API_PROXY points a second dev copy at another API, e.g. a preview database.
+    proxy: { '/api': process.env.ADMIN_API_PROXY ?? 'http://localhost:3000' },
   },
   test: {
     environment: 'jsdom',
