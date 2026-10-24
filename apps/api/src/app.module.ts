@@ -24,6 +24,7 @@ import { MessConfigModule } from './modules/mess-config/mess-config.module';
 import { SlotsModule } from './modules/slots/slots.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { AdminBookingsModule } from './modules/admin/admin-bookings/admin-bookings.module';
+import { AdminDashboardModule } from './modules/admin/admin-dashboard/admin-dashboard.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { StudentsModule } from './modules/students/students.module';
 
@@ -44,6 +45,7 @@ import { StudentsModule } from './modules/students/students.module';
     IdempotencyModule,
     BookingsModule,
     AdminBookingsModule,
+    AdminDashboardModule,
     StudentsModule,
     // Staff surface (/api/v1/admin)
     AdminCoreModule,

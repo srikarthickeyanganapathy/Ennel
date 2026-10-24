@@ -16,6 +16,6 @@ import { GetSlotAvailabilityService } from './services/get-slot-availability.ser
     { provide: SlotAvailabilityRepository, useClass: PrismaSlotAvailabilityRepository },
     GetSlotAvailabilityService,
   ],
-  exports: [GetSlotAvailabilityService],
+  exports: [GetSlotAvailabilityService, SlotAvailabilityRepository],
 })
 export class SlotsModule {}
