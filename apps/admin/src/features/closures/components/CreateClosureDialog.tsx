@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dial
 import { Checkbox, Field, Input, Select, Textarea } from '@/shared/components/ui/form-controls';
 import { todayBusinessDate } from '@/shared/lib/format';
 import { createClosure, getClosureImpact } from '../api/closures-api';
-import { CLOSURE_KIND_LABELS, MEAL_NAMES } from '../constants/closure-labels';
+import { CLOSURE_KIND_LABELS, countOf, MEAL_NAMES } from '../constants/closure-labels';
 
 interface Draft {
   date: string;
@@ -54,7 +54,9 @@ export function CreateClosureDialog({
   const save = useMutation({
     mutationFn: (body: CreateClosureRequest) => createClosure(body),
     onSuccess: ({ cancelled }) => {
-      toast.success(`Closure applied. ${cancelled} booked meals were marked "Mess closed".`);
+      toast.success(
+        `Closure applied. ${countOf(cancelled, 'booked meal was', 'booked meals were')} marked "Mess closed".`,
+      );
       onOpenChange(false);
       void queryClient.invalidateQueries({ queryKey: ['closures'] });
     },
@@ -191,7 +193,10 @@ function ImpactNote({
   );
   return (
     <p className="rounded-md bg-mint p-3 text-sm" role="status">
-      <strong>{impact.data.totalBooked} booked meals will be cancelled</strong> ({parts.join(', ')}
+      <strong>
+        {countOf(impact.data.totalBooked, 'booked meal', 'booked meals')} will be cancelled
+      </strong>{' '}
+      ({parts.join(', ')}
       ).
     </p>
   );

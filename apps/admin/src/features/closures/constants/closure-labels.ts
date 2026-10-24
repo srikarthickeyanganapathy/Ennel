@@ -11,3 +11,7 @@ export const CLOSURE_KIND_LABELS: Record<ClosureKind, string> = {
   FESTIVAL: 'Festival / holiday',
   MAINTENANCE: 'Maintenance',
 };
+
+/** "1 booking" / "3 bookings" for toasts and the impact note. */
+export const countOf = (count: number, one: string, many: string) =>
+  `${count} ${count === 1 ? one : many}`;

@@ -13,7 +13,7 @@ import { PageHeader } from '@/shared/layout/PageHeader';
 import { formatBusinessDate, formatDateTime } from '@/shared/lib/format';
 import { listClosures, removeClosure } from '../api/closures-api';
 import { CreateClosureDialog } from '../components/CreateClosureDialog';
-import { CLOSURE_KIND_LABELS, MEAL_NAMES } from '../constants/closure-labels';
+import { CLOSURE_KIND_LABELS, countOf, MEAL_NAMES } from '../constants/closure-labels';
 
 /** Admin §F: closures and holidays, with links to where special-meal days are set up. */
 export function ClosuresPage() {
@@ -30,7 +30,7 @@ export function ClosuresPage() {
     mutationFn: ({ id, reason }: { id: string; reason: string }) => removeClosure(id, reason),
     onSuccess: ({ restored, notRestored }) => {
       toast.success(
-        `Closure removed. ${restored} bookings restored; ${notRestored} students were told they can book again.`,
+        `Closure removed. ${countOf(restored, 'booking', 'bookings')} restored; ${countOf(notRestored, 'student was', 'students were')} told they can book again.`,
       );
       setRemoving(null);
       void queryClient.invalidateQueries({ queryKey: ['closures'] });
