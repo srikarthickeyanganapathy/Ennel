@@ -56,7 +56,7 @@ export class StudentSessionIssuer {
     return {
       sessionId: id,
       session: {
-        accessToken: await this.accessTokens.sign(options.studentId),
+        accessToken: await this.accessTokens.sign(options.studentId, id),
         accessTokenExpiresAt: accessTokenExpiresAt.toISOString(),
         refreshToken,
         refreshTokenExpiresAt: refreshTokenExpiresAt.toISOString(),

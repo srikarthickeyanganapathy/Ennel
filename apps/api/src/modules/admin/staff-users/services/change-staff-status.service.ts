@@ -10,7 +10,7 @@ import {
   isSuperAdmin,
 } from '../domain/staff-account-rules';
 import { StaffUsersRepository } from '../repositories/staff-users.repository';
-import { requireStaff } from './staff-lookup';
+import { requireManageableStaff, requireStaff } from './staff-lookup';
 
 export interface ChangeStaffStatusCommand {
   actorId: string;
@@ -35,7 +35,7 @@ export class ChangeStaffStatusService {
 
   async execute(command: ChangeStaffStatusCommand): Promise<StaffUser> {
     const updated = await this.transactions.run(async (tx) => {
-      const before = await requireStaff(this.staff, command.staffId, tx);
+      const before = await requireManageableStaff(this.staff, command.actorId, command.staffId, tx);
       if (!command.isEnabled) {
         assertNotSelf(command.actorId, command.staffId, 'disable');
         if (isSuperAdmin(before.roles)) {

@@ -5,7 +5,7 @@ import { TransactionRunner } from '../../../../infrastructure/database/transacti
 import { StaffSessionsService } from '../../admin-auth/services/staff-sessions.service';
 import { AuditWriter } from '../../audit-log/services/audit-writer.service';
 import { StaffUsersRepository } from '../repositories/staff-users.repository';
-import { requireStaff } from './staff-lookup';
+import { requireManageableStaff, requireStaff } from './staff-lookup';
 import { generateTemporaryPassword } from './temporary-password';
 
 /**
@@ -22,11 +22,15 @@ export class ResetStaffCredentialsService {
     private readonly audit: AuditWriter,
   ) {}
 
-  async resetPassword(staffId: string, reason: string): Promise<StaffWithTemporaryPassword> {
+  async resetPassword(
+    actorId: string,
+    staffId: string,
+    reason: string,
+  ): Promise<StaffWithTemporaryPassword> {
     const temporaryPassword = generateTemporaryPassword();
     const passwordHash = await hash(temporaryPassword);
     const staff = await this.transactions.run(async (tx) => {
-      await requireStaff(this.staff, staffId, tx);
+      await requireManageableStaff(this.staff, actorId, staffId, tx);
       await this.staff.setTemporaryPassword(staffId, passwordHash, tx);
       await this.sessions.revokeAllWithin(tx, staffId);
       await this.audit.write(tx, {
@@ -41,9 +45,9 @@ export class ResetStaffCredentialsService {
     return { staff, temporaryPassword };
   }
 
-  resetTotp(staffId: string, reason: string): Promise<void> {
+  resetTotp(actorId: string, staffId: string, reason: string): Promise<void> {
     return this.transactions.run(async (tx) => {
-      const before = await requireStaff(this.staff, staffId, tx);
+      const before = await requireManageableStaff(this.staff, actorId, staffId, tx);
       await this.staff.resetTotp(staffId, tx);
       await this.sessions.revokeAllWithin(tx, staffId);
       await this.audit.write(tx, {

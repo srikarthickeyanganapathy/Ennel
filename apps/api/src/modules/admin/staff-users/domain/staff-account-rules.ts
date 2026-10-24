@@ -22,3 +22,18 @@ export function assertNotSelf(actorId: string, targetId: string, action: string)
 export function isSuperAdmin(roles: readonly string[]): boolean {
   return roles.includes(StaffRole.SUPER_ADMIN);
 }
+
+/**
+ * Only a Super Admin may reset, disable, enable or edit another Super Admin's account; otherwise
+ * staff:manage alone would let someone take over the highest-privilege account (Admin §A, §B).
+ */
+export function assertMayManageAccount(
+  actorRoles: readonly string[],
+  targetRoles: readonly string[],
+): void {
+  if (!isSuperAdmin(targetRoles) || isSuperAdmin(actorRoles)) return;
+  throw new AppError(
+    ErrorCode.PERMISSION_DENIED,
+    "Only a Super Admin can change a Super Admin's account.",
+  );
+}

@@ -10,12 +10,22 @@ export interface StaffAccessRecord {
 
 export abstract class StaffAccessRepository {
   abstract findAccess(staffId: string): Promise<StaffAccessRecord | null>;
+  /** False once the session is revoked (log out, log out everywhere, password change). */
+  abstract isSessionActive(staffId: string, sessionId: string): Promise<boolean>;
 }
 
 @Injectable()
 export class PrismaStaffAccessRepository extends StaffAccessRepository {
   constructor(private readonly prisma: PrismaService) {
     super();
+  }
+
+  async isSessionActive(staffId: string, sessionId: string): Promise<boolean> {
+    const session = await this.prisma.staffSession.findFirst({
+      where: { id: sessionId, staffUserId: staffId, revokedAt: null },
+      select: { id: true },
+    });
+    return session !== null;
   }
 
   async findAccess(staffId: string): Promise<StaffAccessRecord | null> {

@@ -69,11 +69,12 @@ export class StaffUsersController {
   @Patch(':id')
   @RequirePermissions('staff:manage')
   update(
+    @CurrentStaff() actor: AuthenticatedStaff,
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(updateStaffRequestSchema))
     body: z.output<typeof updateStaffRequestSchema>,
   ): Promise<StaffUser> {
-    return this.updateStaff.execute(id, body.fullName, body.version);
+    return this.updateStaff.execute(actor.id, id, body.fullName, body.version);
   }
 
   @Put(':id/roles')
@@ -123,19 +124,21 @@ export class StaffUsersController {
   @HttpCode(200)
   @RequirePermissions('staff:manage')
   resetPassword(
+    @CurrentStaff() actor: AuthenticatedStaff,
     @Param('id', ParseUUIDPipe) id: string,
     @Body(reasonPipe) body: Reason,
   ): Promise<StaffWithTemporaryPassword> {
-    return this.resetCredentials.resetPassword(id, body.reason);
+    return this.resetCredentials.resetPassword(actor.id, id, body.reason);
   }
 
   @Post(':id/reset-totp')
   @HttpCode(204)
   @RequirePermissions('staff:manage')
   async resetTotp(
+    @CurrentStaff() actor: AuthenticatedStaff,
     @Param('id', ParseUUIDPipe) id: string,
     @Body(reasonPipe) body: Reason,
   ): Promise<void> {
-    await this.resetCredentials.resetTotp(id, body.reason);
+    await this.resetCredentials.resetTotp(actor.id, id, body.reason);
   }
 }

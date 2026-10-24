@@ -31,6 +31,8 @@ export abstract class StudentSessionRepository {
     tx?: TransactionClient,
   ): Promise<boolean>;
   abstract revokeFamily(familyId: string, now: Date): Promise<void>;
+  /** False once the session is revoked (log out, password reset, staff action). */
+  abstract isActive(studentId: string, sessionId: string): Promise<boolean>;
   abstract revokeAllForStudent(
     studentId: string,
     now: Date,
@@ -73,6 +75,14 @@ export class PrismaStudentSessionRepository extends StudentSessionRepository {
       data: { replacedById, lastUsedAt: now },
     });
     return result.count === 1;
+  }
+
+  async isActive(studentId: string, sessionId: string): Promise<boolean> {
+    const session = await this.prisma.studentSession.findFirst({
+      where: { id: sessionId, studentId, revokedAt: null },
+      select: { id: true },
+    });
+    return session !== null;
   }
 
   async revokeFamily(familyId: string, now: Date): Promise<void> {

@@ -3,6 +3,7 @@ import { type Paginated, type StaffRole, type StaffUser } from '@ennel/shared';
 import { type Prisma, type StaffStatus } from '../../../../generated/prisma/client';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import { type TransactionClient } from '../../../../infrastructure/database/transaction-runner';
+import { withUniqueField } from '../../../../infrastructure/database/unique-violation';
 
 export interface StaffListFilter {
   q?: string;
@@ -125,16 +126,22 @@ export class PrismaStaffUsersRepository extends StaffUsersRepository {
   }
 
   async create(staff: NewStaffUser, tx: TransactionClient): Promise<string> {
-    const created = await tx.staffUser.create({
-      data: {
-        email: staff.email,
-        fullName: staff.fullName,
-        passwordHash: staff.passwordHash,
-        mustChangePassword: true,
-        roles: { create: await roleIds(tx, staff.roles) },
-      },
-      select: { id: true },
-    });
+    const roles = await roleIds(tx, staff.roles);
+    const created = await withUniqueField(
+      'email',
+      'A staff account with this email already exists.',
+      () =>
+        tx.staffUser.create({
+          data: {
+            email: staff.email,
+            fullName: staff.fullName,
+            passwordHash: staff.passwordHash,
+            mustChangePassword: true,
+            roles: { create: roles },
+          },
+          select: { id: true },
+        }),
+    );
     return created.id;
   }
 

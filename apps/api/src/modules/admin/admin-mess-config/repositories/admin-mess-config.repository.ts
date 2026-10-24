@@ -11,6 +11,10 @@ import {
 import { type Prisma } from '../../../../generated/prisma/client';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import { type TransactionClient } from '../../../../infrastructure/database/transaction-runner';
+import { withUniqueField } from '../../../../infrastructure/database/unique-violation';
+
+const HOSTEL_TAKEN = 'A hostel with this name already exists';
+const BLOCK_TAKEN = 'This hostel already has a block with this name';
 
 export interface SlotWithMeal extends AdminSlot {
   mealType: MealType;
@@ -382,11 +386,17 @@ export class AdminMessConfigRepository {
   }
 
   async createHostel(name: string, tx: TransactionClient): Promise<string> {
-    return (await tx.hostel.create({ data: { name }, select: { id: true } })).id;
+    const created = await withUniqueField('name', HOSTEL_TAKEN, () =>
+      tx.hostel.create({ data: { name }, select: { id: true } }),
+    );
+    return created.id;
   }
 
   async createBlock(hostelId: string, name: string, tx: TransactionClient): Promise<string> {
-    return (await tx.hostelBlock.create({ data: { hostelId, name }, select: { id: true } })).id;
+    const created = await withUniqueField('name', BLOCK_TAKEN, () =>
+      tx.hostelBlock.create({ data: { hostelId, name }, select: { id: true } }),
+    );
+    return created.id;
   }
 
   async updateHostel(
@@ -394,7 +404,7 @@ export class AdminMessConfigRepository {
     data: { name?: string; isActive?: boolean },
     tx: TransactionClient,
   ): Promise<void> {
-    await tx.hostel.update({ where: { id }, data });
+    await withUniqueField('name', HOSTEL_TAKEN, () => tx.hostel.update({ where: { id }, data }));
   }
 
   async updateBlock(
@@ -402,7 +412,9 @@ export class AdminMessConfigRepository {
     data: { name?: string; isActive?: boolean },
     tx: TransactionClient,
   ): Promise<void> {
-    await tx.hostelBlock.update({ where: { id }, data });
+    await withUniqueField('name', BLOCK_TAKEN, () =>
+      tx.hostelBlock.update({ where: { id }, data }),
+    );
   }
 
   async hostelNameExists(name: string, excludingId?: string): Promise<boolean> {

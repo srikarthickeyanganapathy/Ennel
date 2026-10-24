@@ -47,6 +47,7 @@ import { StudentSessionsAdminService } from './services/student-sessions-admin.s
   ],
   exports: [
     StudentAccessTokenService,
+    StudentSessionRepository,
     StudentJwtAuthGuard,
     IssueCredentialResetService,
     StudentSessionsAdminService,

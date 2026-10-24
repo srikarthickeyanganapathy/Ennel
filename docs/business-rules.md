@@ -36,7 +36,7 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 ## BR-STAFF: Staff accounts (Admin §A/§B)
 
 - **BR-STAFF-1** New staff accounts and password resets get a random temporary password, shown once to the admin who created it; the staff member must change it at first login.
-- **BR-STAFF-2** Staff cannot disable themselves or remove their own Super Admin role, and the last active Super Admin cannot be disabled or demoted. Disabling an account revokes its sessions.
+- **BR-STAFF-2** Staff cannot disable themselves or remove their own Super Admin role, and the last active Super Admin cannot be disabled or demoted. Disabling an account revokes its sessions. Only a Super Admin may reset, disable, enable or rename a Super Admin (ADR-0021).
 - **BR-STAFF-3** Role and permission changes take effect on the next request (permissions are re-read, cached for at most 30 s).
 - **BR-STAFF-4** TOTP 2FA is optional per staff member: enrolment turns on only after a correct code; staff with `staff:manage` can reset another member's 2FA with a reason. TOTP secrets are stored encrypted.
 
@@ -146,13 +146,13 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-AUTH-1** Student registration requires a reference number present and active in `college_roster`. Reference numbers are normalized to digits only before comparison.
 - **BR-AUTH-2** Passwords are hashed with argon2id. Hashes never appear in logs or responses.
 - **BR-AUTH-3** Password policy: students min 8 chars; staff min 12 chars and not equal to their email. Lockout after 5 consecutive failures for 15 minutes (students and staff). Login is also rate-limited per IP. Every failure counts, including parallel attempts (compare-and-swap on the counter). For staff with 2FA, a correct password does not reset the counter; only a correct code does.
-- **BR-AUTH-4** Refresh tokens rotate on every use. Reuse of a rotated token revokes the whole session family.
+- **BR-AUTH-4** Refresh tokens rotate on every use. Reuse of a rotated token revokes the whole session family. Access tokens carry their session id and stop working as soon as that session is revoked (logout, log out everywhere, password change or reset), not when they expire (ADR-0021).
 - **BR-AUTH-5** Staff must change their password on first login. TOTP 2FA is optional per staff member.
 - **BR-AUTH-6** Credential reset (no email/SMS assumed): staff issue a one-time code, shown once and valid 24 h, which the student enters with their reference number to set a new password. (ADR-0019) The code is 10 characters without look-alike letters/digits, stored only as a hash, allows 5 wrong attempts, and issuing a new code voids the previous one. A successful reset signs the student out everywhere. Wrong, expired and used codes all return the same error. Each guess is counted before the code is checked, so parallel guesses cannot exceed 5.
 - **BR-AUTH-7** College-controlled profile fields (_policy_ `collegeControlledFields`, default reference number, full name, department, academic year) are read-only for students. Hostel/block, room, phones, email and photo are editable. (ADR-0018)
 
 - **BR-AUTH-8** Login, registration, roster check and refresh are rate-limited per client IP (10, 10, 20 and 30 requests per minute). If Redis is unavailable the limiter allows the request, and account lockout (BR-AUTH-3) still applies.
-- **BR-AUTH-9** Login errors never reveal whether an account exists: unknown numbers and wrong passwords return the same message, with similar response times.
+- **BR-AUTH-9** Login errors never reveal whether an account exists: unknown numbers and wrong passwords return the same message, with similar response times. Deactivated, staff-locked or disabled status is shown only after the correct password (ADR-0021).
 - **BR-AUTH-10** A locked or deactivated student cannot log in or refresh; refreshing such an account revokes its sessions.
 
 ## BR-ONB: First-time setup (Spec §3 Screens 5–8)

@@ -2,6 +2,7 @@ import { type CanActivate, type ExecutionContext, Injectable } from '@nestjs/com
 import { Reflector } from '@nestjs/core';
 import { ErrorCode } from '@ennel/shared';
 import { StaffAccessTokenService } from '../../modules/admin/admin-auth/services/staff-access-token.service';
+import { StaffAccessRepository } from '../../modules/admin/rbac/repositories/staff-access.repository';
 import { getRequestContext } from '../context/request-context';
 import {
   ALLOW_PENDING_PASSWORD_CHANGE_KEY,
@@ -19,6 +20,7 @@ import { extractBearerToken } from './student-jwt-auth.guard';
 export class StaffJwtAuthGuard implements CanActivate {
   constructor(
     private readonly tokens: StaffAccessTokenService,
+    private readonly access: StaffAccessRepository,
     private readonly reflector: Reflector,
   ) {}
 
@@ -27,7 +29,10 @@ export class StaffJwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<StaffRequest>();
     const token = extractBearerToken(request.header('authorization'));
     const claims = token ? await this.tokens.verify(token) : null;
-    if (!claims) throw new AppError(ErrorCode.UNAUTHENTICATED, 'Please sign in to continue.');
+    // A revoked session ends at once, not when its access token expires (ADR-0015).
+    if (!claims || !(await this.access.isSessionActive(claims.staffId, claims.sessionId))) {
+      throw new AppError(ErrorCode.UNAUTHENTICATED, 'Please sign in to continue.');
+    }
 
     if (claims.mustChangePassword && !this.isMarked(context, ALLOW_PENDING_PASSWORD_CHANGE_KEY)) {
       throw new AppError(

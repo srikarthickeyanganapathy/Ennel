@@ -25,6 +25,7 @@ import { StaffPermissionsService } from './rbac/services/staff-permissions.servi
   ],
   exports: [
     StaffAccessTokenService,
+    StaffAccessRepository,
     StaffPermissionsService,
     StaffJwtAuthGuard,
     PermissionsGuard,

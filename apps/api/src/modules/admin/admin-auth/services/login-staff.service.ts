@@ -35,8 +35,10 @@ export class LoginStaffService {
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, INVALID_CREDENTIALS);
     }
     const now = this.clock.now();
-    assertCanAttempt(member, now);
+    if (isLockedOut(member, now)) throw lockedError(member.lockedUntil);
     if (!(await verify(member.passwordHash, password))) await this.handleFailure(member, now);
+    // A disabled account is revealed only after the right password (BR-AUTH-9).
+    assertCanAttempt(member, now);
 
     // With 2FA the counter is cleared only once the code is correct: resetting it here would let
     // anyone who knows the password retry TOTP codes forever (BR-AUTH-3).

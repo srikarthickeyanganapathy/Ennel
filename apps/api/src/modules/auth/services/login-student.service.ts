@@ -36,11 +36,14 @@ export class LoginStudentService {
       throw new AppError(ErrorCode.INVALID_CREDENTIALS, INVALID_CREDENTIALS);
     }
     const now = this.clock.now();
-    this.assertCanAttempt(student, now);
+    this.assertNotLockedOut(student, now);
 
     if (!(await verify(student.passwordHash, command.password))) {
       await this.handleFailure(student, now);
     }
+    // Checked only after the right password, so the answer never tells a stranger that a
+    // locked or deactivated account exists (BR-AUTH-9).
+    this.assertActive(student);
     await this.students.saveLoginState(student.id, recordSuccessfulLogin());
     const issued = await this.sessions.issue({
       studentId: student.id,
@@ -50,13 +53,15 @@ export class LoginStudentService {
     return issued.session;
   }
 
-  private assertCanAttempt(student: StudentCredentials, now: Date): void {
-    if (student.status !== 'ACTIVE') {
-      throw new AppError(
-        ErrorCode.ACCOUNT_LOCKED,
-        'This account is not active. Please contact the mess office.',
-      );
-    }
+  private assertActive(student: StudentCredentials): void {
+    if (student.status === 'ACTIVE') return;
+    throw new AppError(
+      ErrorCode.ACCOUNT_LOCKED,
+      'This account is not active. Please contact the mess office.',
+    );
+  }
+
+  private assertNotLockedOut(student: StudentCredentials, now: Date): void {
     if (isLockedOut(student, now)) {
       throw new AppError(ErrorCode.ACCOUNT_LOCKED, 'Too many failed attempts. Try again later.', {
         lockedUntil: student.lockedUntil?.toISOString(),
