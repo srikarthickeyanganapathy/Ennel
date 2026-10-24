@@ -10,6 +10,7 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
     expect(labelsFor(StaffRole.MESS_STAFF)).toEqual([
       'Dashboard',
       'Menus',
+      'Closures',
       'Mess configuration',
       'Hostels',
     ]);
@@ -27,7 +28,7 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
   });
 
   it('shows the Super Admin everything', () => {
-    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(9);
+    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(10);
     expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('Bookings');
   });
 });

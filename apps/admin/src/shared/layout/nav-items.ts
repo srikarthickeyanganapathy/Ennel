@@ -13,6 +13,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Bookings', path: '/bookings', anyOf: ['bookings:read'] },
   { label: 'Students', path: '/students', anyOf: ['students:read', 'roster:import'] },
   { label: 'Menus', path: '/menus', anyOf: ['menus:read'] },
+  { label: 'Closures', path: '/closures', anyOf: ['closures:read'] },
   { label: 'Mess configuration', path: '/mess-config', anyOf: ['mess-config:read'] },
   { label: 'Hostels', path: '/hostels', anyOf: ['mess-config:read'] },
   { label: 'Policy', path: '/policy', anyOf: ['policy:read'] },
