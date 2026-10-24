@@ -148,6 +148,17 @@ describe('status labels (BR-BOOK-3)', () => {
     );
   });
 
+  it('shows a booking cancelled by switching Default Booking off as not booked', () => {
+    const off = {
+      status: 'CANCELLED',
+      source: 'DEFAULT',
+      slotId: 's1',
+      dietType: 'VEG',
+      isSystemCancelled: true,
+    } as const;
+    expect(label({ booking: off, isDefaultOff: true })).toBe('NOT_BOOKED_DEFAULT_OFF');
+  });
+
   it('labels every other status', () => {
     const of = (
       status: 'CANCELLED' | 'PAUSED_LEAVE' | 'CANCELLED_BY_CLOSURE' | 'NO_SHOW' | 'COMPLETED',

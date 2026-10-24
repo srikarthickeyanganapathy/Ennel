@@ -50,6 +50,8 @@ export interface CardBookingState {
   source: BookingSource;
   slotId: string;
   dietType: DietType;
+  /** True when the system cancelled a recurring booking because Default Booking was switched off. */
+  isSystemCancelled?: boolean;
 }
 
 export interface LabelInput {
@@ -69,7 +71,8 @@ export function deriveBookingLabel(input: LabelInput): BookingLabel {
     case BookingStatus.BOOKED:
       return labelForBooked(booking, input.recurring);
     case BookingStatus.CANCELLED:
-      return 'CANCELLED';
+      // Switched off by the student's own settings, not cancelled for the day (BR-DEF-3).
+      return booking.isSystemCancelled ? labelWithoutBooking(input) : 'CANCELLED';
     case BookingStatus.PAUSED_LEAVE:
       return 'PAUSED_LEAVE';
     case BookingStatus.CANCELLED_BY_CLOSURE:

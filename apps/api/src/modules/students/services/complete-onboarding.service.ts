@@ -4,6 +4,7 @@ import { type z } from 'zod';
 import { Clock } from '../../../infrastructure/clock/clock';
 import { TransactionRunner } from '../../../infrastructure/database/transaction-runner';
 import { SaveMealPreferencesService } from '../../default-preferences/services/save-meal-preferences.service';
+import { SyncStudentBookingsService } from '../../default-preferences/services/sync-student-bookings.service';
 import { GetMessPolicyService } from '../../mess-config/services/get-mess-policy.service';
 import { pickEditableChanges } from '../domain/editable-fields';
 import { StudentProfileRepository } from '../repositories/student-profile.repository';
@@ -14,14 +15,15 @@ export type CompleteOnboardingCommand = z.output<typeof completeOnboardingReques
 
 /**
  * Spec §3 Screen 8 "Save & Continue": saves profile, hostel details and Default Booking
- * preferences in one transaction and marks onboarding complete. Generating the resulting
- * future bookings belongs to the booking engine (Phase 4/5), which reads these preferences.
+ * preferences in one transaction, marks onboarding complete and creates the resulting
+ * upcoming Default Bookings.
  */
 @Injectable()
 export class CompleteOnboardingService {
   constructor(
     private readonly profiles: StudentProfileRepository,
     private readonly preferences: SaveMealPreferencesService,
+    private readonly syncBookings: SyncStudentBookingsService,
     private readonly policy: GetMessPolicyService,
     private readonly transactions: TransactionRunner,
     private readonly getProfile: GetMyProfileService,
@@ -33,16 +35,21 @@ export class CompleteOnboardingService {
     const changes = pickEditableChanges(command.profile, policy.collegeControlledFields);
     await assertActiveHostelBlock(this.profiles, command.profile.hostelBlockId);
 
-    await this.transactions.run(async (tx) => {
-      await this.preferences.execute(studentId, command.mealPreferences, tx);
-      await this.profiles.completeOnboarding(
-        studentId,
-        changes,
-        command.defaultBookingEnabled,
-        this.clock.now(),
-        tx,
-      );
-    });
+    await this.transactions.run(
+      async (tx) => {
+        await this.preferences.execute(studentId, command.mealPreferences, tx);
+        await this.profiles.completeOnboarding(
+          studentId,
+          changes,
+          command.defaultBookingEnabled,
+          this.clock.now(),
+          tx,
+        );
+        // Default Booking starts at once rather than after the nightly job (BR-DEF-1).
+        await this.syncBookings.execute(studentId, tx);
+      },
+      { timeoutMs: 30_000 },
+    );
     return this.getProfile.execute(studentId);
   }
 }

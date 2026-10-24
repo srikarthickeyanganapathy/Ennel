@@ -95,6 +95,8 @@ function toCard(meal: MealDayRow, context: CardContext): MealCard {
         source: booking.source,
         slotId: booking.slot.id,
         dietType: booking.dietType,
+        isSystemCancelled:
+          booking.status === BookingStatus.CANCELLED && booking.lastActorType === 'SYSTEM',
       },
       resolution,
       recurring,

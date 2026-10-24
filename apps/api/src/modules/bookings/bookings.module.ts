@@ -10,12 +10,13 @@ import { BookingReconciler } from './services/booking-reconciler.service';
 import { SeatAllocator } from './services/seat-allocator.service';
 import { StudentBookingsService } from './services/student-bookings.service';
 
-/** Booking engine (Phase 4): resolution, book, change, cancel (Spec §4–5, ADR-0003/0004). */
+/** Booking engine: resolution, book, change, cancel, recurring reconciliation (Spec §4–5, §8, ADR-0003/0004). */
 @Module({
   imports: [AuthModule, MessConfigModule, NotificationsModule],
   controllers: [StudentBookingsController],
   providers: [
     BookingsRepository,
+    SeatAllocator,
     BookingDayService,
     BookingCommandsService,
     BookingReconciler,
