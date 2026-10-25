@@ -10,3 +10,4 @@ export * from './admin-bookings.schema.js';
 export * from './dashboard.schema.js';
 export * from './closures.schema.js';
 export * from './attendance.schema.js';
+export * from './leaves.schema.js';
