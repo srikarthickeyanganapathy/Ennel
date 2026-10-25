@@ -11,6 +11,8 @@ import { BookingDayService } from './services/booking-day.service';
 import { BookingHistoryService } from './services/booking-history.service';
 import { BookingOutcomeService } from './services/booking-outcome.service';
 import { BookingReconciler } from './services/booking-reconciler.service';
+import { BookingRestorer } from './services/booking-restorer.service';
+import { LeaveBookingSync } from './services/leave-booking-sync.service';
 import { SeatAllocator } from './services/seat-allocator.service';
 import { StudentBookingsService } from './services/student-bookings.service';
 
@@ -27,6 +29,8 @@ import { StudentBookingsService } from './services/student-bookings.service';
     BookingCommandsService,
     BookingReconciler,
     BookingOutcomeService,
+    BookingRestorer,
+    LeaveBookingSync,
     StudentBookingsService,
   ],
   exports: [
@@ -36,6 +40,8 @@ import { StudentBookingsService } from './services/student-bookings.service';
     BookingCommandsService,
     BookingReconciler,
     BookingOutcomeService,
+    BookingRestorer,
+    LeaveBookingSync,
   ],
 })
 export class BookingsModule {}

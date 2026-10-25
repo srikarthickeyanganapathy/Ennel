@@ -1,19 +1,13 @@
 import { Injectable } from '@nestjs/common';
-import { type BusinessDate, type ClosureResult, ErrorCode, toInstant } from '@ennel/shared';
+import { type BusinessDate, type ClosureResult, ErrorCode } from '@ennel/shared';
 import { AppError } from '../../../../common/errors/app-error';
 import { Clock } from '../../../../infrastructure/clock/clock';
 import {
   type TransactionClient,
   TransactionRunner,
 } from '../../../../infrastructure/database/transaction-runner';
-import { fallbackOrder } from '../../../bookings/domain/fallback-slot';
-import { isDeadlinePassed } from '../../../bookings/domain/meal-card-rules';
-import {
-  BookingsRepository,
-  type MealDayRow,
-} from '../../../bookings/repositories/bookings.repository';
-import { resolveMeal } from '../../../bookings/services/meal-resolution';
-import { SeatAllocator } from '../../../bookings/services/seat-allocator.service';
+import { type MealDayRow } from '../../../bookings/repositories/bookings.repository';
+import { BookingRestorer } from '../../../bookings/services/booking-restorer.service';
 import { type MessPolicy } from '../../../mess-config/domain/mess-policy';
 import { GetMessPolicyService } from '../../../mess-config/services/get-mess-policy.service';
 import { NotifyStudentsService } from '../../../notifications/services/notify-students.service';
@@ -32,8 +26,6 @@ interface RestoreContext {
   tx: TransactionClient;
 }
 
-type Outcome = 'RESTORED' | 'NOT_RESTORED';
-
 /**
  * ADR-0017, BR-CLOS-2: removing a closure re-runs the resolver for each "Mess closed" booking.
  * Bookings whose intent still holds are restored (using the full-slot fallback if needed);
@@ -44,8 +36,7 @@ type Outcome = 'RESTORED' | 'NOT_RESTORED';
 export class RemoveClosureService {
   constructor(
     private readonly closures: AdminClosuresRepository,
-    private readonly bookings: BookingsRepository,
-    private readonly seats: SeatAllocator,
+    private readonly restorer: BookingRestorer,
     private readonly notify: NotifyStudentsService,
     private readonly policies: GetMessPolicyService,
     private readonly transactions: TransactionRunner,
@@ -72,8 +63,7 @@ export class RemoveClosureService {
         );
         const context: RestoreContext = { closureId, date: before.date, now, policy, tx };
         let restored = 0;
-        for (const booking of affected)
-          if ((await this.restore(booking, context)) === 'RESTORED') restored += 1;
+        for (const booking of affected) if (await this.restore(booking, context)) restored += 1;
         await this.audit.write(tx, {
           action: 'closure.remove',
           entityType: 'mess_closure',
@@ -94,80 +84,44 @@ export class RemoveClosureService {
     );
   }
 
-  private async restore(affected: AffectedBooking, context: RestoreContext): Promise<Outcome> {
-    const booking = await this.bookings.findBooking(affected.id, context.tx);
-    if (
-      !booking ||
-      isDeadlinePassed(toInstant(context.date, booking.slot.startMinute), context.now)
-    )
-      return 'NOT_RESTORED';
-    const day = await this.bookings.loadStudentDay(affected.studentId, context.date, context.tx);
-    const meal = day.meals.find((candidate) => candidate.mealId === affected.mealId);
-    if (!meal) return 'NOT_RESTORED';
-    const { resolution } = resolveMeal(meal, day, context.date);
-    if (resolution.kind !== 'BOOK') {
-      await this.tell(affected, meal, context, 'you can book again', 'reopened');
-      return 'NOT_RESTORED';
+  /** Returns true when the booking is back; the student is told either way. */
+  private async restore(affected: AffectedBooking, context: RestoreContext): Promise<boolean> {
+    const outcome = await this.restorer.restore(
+      {
+        bookingId: affected.id,
+        studentId: affected.studentId,
+        mealId: affected.mealId,
+        date: context.date,
+        fromStatus: 'CANCELLED_BY_CLOSURE',
+        eventType: 'RESTORED_AFTER_CLOSURE',
+        policy: context.policy,
+        now: context.now,
+      },
+      context.tx,
+    );
+    if (outcome.kind === 'SKIPPED') return false;
+    if (outcome.kind === 'NO_INTENT') {
+      await this.tell(affected, outcome.meal, context, 'you can book again', 'reopened');
+      return false;
     }
-    const slotId = await this.findSeat(resolution.slotId, meal, context);
-    if (!slotId) {
+    if (outcome.kind === 'FULL') {
       await this.tell(
         affected,
-        meal,
+        outcome.meal,
         context,
         'your usual slot is now full, so please pick another slot',
         'full',
       );
-      return 'NOT_RESTORED';
+      return false;
     }
-    const write = {
-      status: 'BOOKED' as const,
-      slotId: slotId.id,
-      isOverCapacity: slotId.isOverCapacity,
-      dietType: resolution.dietType,
-      source: resolution.source,
-      cancelledAt: null,
-    };
-    if (!(await this.bookings.updateBooking(booking.id, booking.version, write, context.tx)))
-      return 'NOT_RESTORED';
-    await this.bookings.addEvent(
-      {
-        bookingId: booking.id,
-        type: 'RESTORED_AFTER_CLOSURE',
-        fromStatus: 'CANCELLED_BY_CLOSURE',
-        toStatus: 'BOOKED',
-        payload: { slotId: slotId.id },
-        actorType: 'SYSTEM',
-        actorStaffId: null,
-        reason: null,
-      },
-      context.tx,
+    await this.tell(
+      affected,
+      outcome.meal,
+      context,
+      `your booking is restored (${outcome.slotLabel})`,
+      'restored',
     );
-    const label = meal.slots.find((slot) => slot.id === slotId.id)?.label ?? '';
-    await this.tell(affected, meal, context, `your booking is restored (${label})`, 'restored');
-    return 'RESTORED';
-  }
-
-  /** The intended slot, or under AUTO_NEXT_AVAILABLE the first open fallback with a seat (ADR-0006). */
-  private async findSeat(
-    slotId: string,
-    meal: MealDayRow,
-    context: RestoreContext,
-  ): Promise<{ id: string; isOverCapacity: boolean } | null> {
-    const first = await this.seats.tryReserve(slotId, context.date, context.policy, context.tx);
-    if (first.isAvailable) return { id: slotId, isOverCapacity: first.isOverCapacity };
-    if (context.policy.defaultSlotFullFallback !== 'AUTO_NEXT_AVAILABLE') return null;
-    const open = meal.slots.filter(
-      (slot) => !isDeadlinePassed(toInstant(context.date, slot.startMinute), context.now),
-    );
-    for (const candidate of fallbackOrder(
-      slotId,
-      open.map((slot) => ({ slotId: slot.id, startMinute: slot.startMinute })),
-    )) {
-      const seat = await this.seats.tryReserve(candidate, context.date, context.policy, context.tx);
-      if (seat.isAvailable) return { id: candidate, isOverCapacity: seat.isOverCapacity };
-    }
-    return null;
+    return true;
   }
 
   private async tell(

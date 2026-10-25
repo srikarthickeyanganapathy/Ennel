@@ -309,6 +309,49 @@ export class BookingsRepository {
   async addEvent(event: BookingEventWrite, tx: TransactionClient): Promise<void> {
     await tx.bookingEvent.create({ data: { ...event, payload: event.payload ?? undefined } });
   }
+
+  /** A student's Booked and leave-paused meals from a date on, for leave changes (BR-LEAVE-4/7). */
+  async bookingsForLeave(
+    studentId: string,
+    fromDate: BusinessDate,
+    tx: TransactionClient,
+  ): Promise<LeaveBookingRow[]> {
+    const rows = await tx.booking.findMany({
+      where: {
+        studentId,
+        mealDate: { gte: toDbDate(fromDate) },
+        status: { in: ['BOOKED', 'PAUSED_LEAVE'] },
+      },
+      select: {
+        id: true,
+        version: true,
+        status: true,
+        mealId: true,
+        mealDate: true,
+        meal: { select: { mealType: true } },
+        slot: { select: { startMinute: true } },
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      version: row.version,
+      status: row.status as 'BOOKED' | 'PAUSED_LEAVE',
+      mealId: row.mealId,
+      mealType: row.meal.mealType,
+      date: fromDbDate(row.mealDate),
+      slotStartMinute: row.slot.startMinute,
+    }));
+  }
+}
+
+export interface LeaveBookingRow {
+  id: string;
+  version: number;
+  status: 'BOOKED' | 'PAUSED_LEAVE';
+  mealId: string;
+  mealType: MealType;
+  date: BusinessDate;
+  slotStartMinute: number;
 }
 
 type MealWithIntent = Prisma.MealGetPayload<{
