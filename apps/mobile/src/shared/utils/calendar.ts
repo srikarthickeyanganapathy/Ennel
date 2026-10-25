@@ -15,10 +15,19 @@ export const MONTH_NAMES = [
   'December',
 ] as const;
 
+/** Column headings, Sunday first like the grid. */
+export const CALENDAR_WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+
+export interface CalendarBounds {
+  /** First and last dates that can be chosen. */
+  firstDate: BusinessDate;
+  lastDate: BusinessDate;
+  today: BusinessDate;
+}
+
 export interface CalendarCell {
   date: BusinessDate;
   dayOfMonth: number;
-  /** Inside today … last bookable date (Spec §6.1 "within the allowed planning horizon"). */
   isSelectable: boolean;
   isToday: boolean;
 }
@@ -42,10 +51,7 @@ export function monthTitle(month: string): string {
  * Weeks (Sunday first) for a month grid; days outside the month are null. Business dates are
  * calendar dates, so the arithmetic is done in UTC without any time zone shift (ADR-0002).
  */
-export function buildMonth(
-  month: string,
-  bounds: { today: BusinessDate; lastDate: BusinessDate },
-): (CalendarCell | null)[][] {
+export function buildMonth(month: string, bounds: CalendarBounds): (CalendarCell | null)[][] {
   const [year = 0, monthNumber = 1] = month.split('-').map(Number);
   const firstWeekday = new Date(Date.UTC(year, monthNumber - 1, 1)).getUTCDay();
   const daysInMonth = new Date(Date.UTC(year, monthNumber, 0)).getUTCDate();
@@ -55,7 +61,7 @@ export function buildMonth(
     cells.push({
       date,
       dayOfMonth: day,
-      isSelectable: date >= bounds.today && date <= bounds.lastDate,
+      isSelectable: date >= bounds.firstDate && date <= bounds.lastDate,
       isToday: date === bounds.today,
     });
   }
