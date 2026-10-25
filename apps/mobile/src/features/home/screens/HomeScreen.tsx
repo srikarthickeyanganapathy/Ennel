@@ -8,12 +8,15 @@ import {
   toBusinessDate,
 } from '@ennel/shared';
 import { AppButton } from '@/shared/components/AppButton';
+import { MessageBanner } from '@/shared/components/MessageBanner';
 import { QueryState } from '@/shared/components/QueryState';
 import { Screen } from '@/shared/components/Screen';
 import { StepHeader } from '@/shared/components/StepHeader';
 import { describeBusinessDate } from '@/shared/utils/format-date';
 import { useMyProfile } from '@/features/onboarding/hooks/use-onboarding-queries';
 import { useDay } from '@/features/bookings/hooks/use-bookings';
+import { useLeaves } from '@/features/leave/hooks/use-leaves';
+import { describeRange } from '@/features/leave/utils/leave-text';
 import { DayMeals } from '../components/DayMeals';
 
 /** Spec §4 Home: the student's meals for a date within the booking period. */
@@ -50,17 +53,48 @@ function HomeContent({
           .filter(Boolean)
           .join(' • ')}
       />
+      <LeaveBanner />
       <DateSwitcher day={day} tomorrow={tomorrow} onDateChange={onDateChange} />
       <DayMeals key={day.date} day={day} />
-      <View className="mb-6">
+      <View className="mb-6 gap-3">
         <AppButton
           label="Plan Ahead"
           variant="secondary"
           accessibilityHint="Change a future date or set weekday rules"
           onPress={() => router.push('/(student)/plan-ahead')}
         />
+        <AppButton
+          label="Leave Management"
+          variant="secondary"
+          accessibilityHint="Apply for, extend or end leave"
+          onPress={() => router.push('/(student)/leave')}
+        />
       </View>
     </Screen>
+  );
+}
+
+/** Spec §11.2: "Booking Paused Due to Leave" while on leave, and a heads-up before one starts. */
+function LeaveBanner() {
+  const router = useRouter();
+  const leaves = useLeaves();
+  const current = leaves.data?.current;
+  if (!current?.leave || (current.status !== 'ON_LEAVE' && current.status !== 'UPCOMING')) {
+    return null;
+  }
+  const isOnLeave = current.status === 'ON_LEAVE';
+  return (
+    <View className="mb-4">
+      <MessageBanner
+        tone={isOnLeave ? 'warning' : 'info'}
+        message={`${isOnLeave ? 'Booking Paused Due to Leave' : 'Upcoming leave'}: ${describeRange(current.leave)}`}
+      />
+      <AppButton
+        label="Go to Leave Management"
+        variant="secondary"
+        onPress={() => router.push('/(student)/leave')}
+      />
+    </View>
   );
 }
 
