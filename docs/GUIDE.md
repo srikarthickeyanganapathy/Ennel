@@ -45,7 +45,7 @@ Section 6 shows how to tell which one it is.
 
 ## 2. What exists today, and what does not yet
 
-The project is built in phases. Phases 0–6 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
+The project is built in phases. Phases 0–7 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
 
 | Area                                                                                                                | Status                                                                                            |
 | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -57,7 +57,8 @@ The project is built in phases. Phases 0–6 are done. **Many screens you might 
 | Student: **Profile tab**                                                                                            | ⏳ Shows your name and Log Out. Viewing and editing your details (Spec §9) comes in a later phase |
 | Student: **Default Booking tab** (overall switch, per-meal ON/OFF, edit one meal, Change Slots for all meals)       | ✅ Works (Phase 5): saving updates your upcoming bookings at once                                 |
 | Student: **Plan Ahead** (Home → Plan Ahead: change one date, or weekday rules such as "Mon/Wed lunch at 1:00 PM")   | ✅ Works (Phase 6): a one-date change always wins over a weekday rule                             |
-| Student: My Bookings, leave, no-shows, complaints                                                                   | ⏳ Phases 7–10                                                                                    |
+| Student: **My Bookings tab** (completed, cancelled and No-show meals, filters, record details)                      | ✅ Works (Phase 7)                                                                                |
+| Student: leave, no-show warnings and appeals, complaints                                                            | ⏳ Phases 8–10                                                                                    |
 | Admin: sign in, change password, 2FA, sessions                                                                      | ✅ Works (Phase 2)                                                                                |
 | Admin: Staff & roles, Audit log                                                                                     | ✅ Works (Phase 2)                                                                                |
 | Admin: Students, Import roster, reset codes                                                                         | ✅ Works (Phase 2)                                                                                |
@@ -65,7 +66,8 @@ The project is built in phases. Phases 0–6 are done. **Many screens you might 
 | Admin: **Dashboard** (booked / expected / attended plates, slot occupancy, pending work, 7-day charts)              | ✅ Works (Phase 4)                                                                                |
 | Admin: **Bookings** (grid, book for a student, move, cancel, correct status, bulk actions)                          | ✅ Works (Phase 4)                                                                                |
 | Admin: **Closures** (close a date or meals, see how many bookings it cancels, remove a closure to restore bookings) | ✅ Works (Phase 5)                                                                                |
-| Admin: attendance, leaves, no-shows, complaints, announcements, reports                                             | ⏳ Phases 6–11 (not in the sidebar yet)                                                           |
+| Admin: **Attendance** (live counter, search a reference number and mark present, outage mode, import a file)        | ✅ Works (Phase 7)                                                                                |
+| Admin: leaves, no-shows, complaints, announcements, reports                                                         | ⏳ Phases 8–11 (not in the sidebar yet)                                                           |
 
 ---
 
@@ -73,17 +75,28 @@ The project is built in phases. Phases 0–6 are done. **Many screens you might 
 
 You need **these things running**. Use one terminal window for each `pnpm dev:*` command and leave them open.
 
-| #   | What              | Command (run in the project folder) | How you know it works                                                        |
-| --- | ----------------- | ----------------------------------- | ---------------------------------------------------------------------------- |
-| 1   | Docker Desktop    | open the Docker Desktop app         | its whale icon says "running"                                                |
-| 2   | Database + Redis  | `pnpm db:up`                        | `docker ps` lists `ennel-dev-postgres-1` and `ennel-dev-redis-1`             |
-| 3   | Shared library    | `pnpm dev:shared`                   | prints "Found 0 errors. Watching for file changes."                          |
-| 4   | API               | `pnpm dev:api`                      | prints `API listening on port 3000`; http://localhost:3000 shows `ENNEL API` |
-| 5   | Admin website     | `pnpm dev:admin`                    | http://localhost:5173 shows "ENNEL staff sign-in"                            |
-| 6   | Student app       | `pnpm dev:mobile`                   | shows a QR code; the app prints `[ENNEL] API_URL = ...` when it opens        |
-| 7   | Background worker | `pnpm dev:worker`                   | prints `Worker ready; generate-default-bookings runs daily at 00:30 IST`     |
+| #   | What              | Command (run in the project folder) | How you know it works                                                         |
+| --- | ----------------- | ----------------------------------- | ----------------------------------------------------------------------------- |
+| 1   | Docker Desktop    | open the Docker Desktop app         | its whale icon says "running"                                                 |
+| 2   | Database + Redis  | `pnpm db:up`                        | `docker ps` lists `ennel-dev-postgres-1` and `ennel-dev-redis-1`              |
+| 3   | Shared library    | `pnpm dev:shared`                   | prints "Found 0 errors. Watching for file changes."                           |
+| 4   | API               | `pnpm dev:api`                      | prints `API listening on port 3000`; http://localhost:3000 shows `ENNEL API`  |
+| 5   | Admin website     | `pnpm dev:admin`                    | http://localhost:5173 shows "ENNEL staff sign-in"                             |
+| 6   | Student app       | `pnpm dev:mobile`                   | shows a QR code; the app prints `[ENNEL] API_URL = ...` when it opens         |
+| 7   | Background worker | `pnpm dev:worker`                   | prints `Worker ready; generate-default-bookings runs daily at 00:30 IST, ...` |
 
-The worker runs the nightly job that books the next days from everyone's Default Booking settings. Without it, bookings still appear when a student saves settings, but new days are not added each night.
+The worker runs two jobs:
+
+- **Every night** it books the next days from everyone's Default Booking settings. Without it, bookings still appear when a student saves settings, but new days are not added each night.
+- **Every 5 minutes** it closes meal windows that have ended: each meal that is still Booked becomes **Meal Completed** (attendance found) or **No-show**. Without it, past meals stay "Booked" and never reach My Bookings.
+
+**Trying "Face Verified" on your computer.** The college's face-verification system is not connected yet. While a meal is being served, you can pretend it saw a student (works only in development):
+
+```bash
+curl -X POST http://localhost:3000/api/v1/dev/attendance -H "Content-Type: application/json" -d "{\"referenceNumber\":\"24900001\"}"
+```
+
+The student's meal turns **Meal Completed** with "Face Verified at …" in My Bookings.
 
 **Order matters:** Docker before the API (the API needs the database), and the shared library before the apps (they import its compiled code).
 

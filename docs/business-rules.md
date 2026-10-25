@@ -139,7 +139,11 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 ## BR-ATT: Attendance
 
 - **BR-ATT-1** Attendance sources are `FACE_VERIFICATION`, `MANUAL_FALLBACK` and `IMPORT`. `verified_at` is set only from the face-verification provider and is never fabricated (Spec §7).
-- **BR-ATT-2** Manual marking is allowed only during, or shortly after, the active meal window, and only for a student with a booking (or with an override reason).
+- **BR-ATT-2** Manual marking is allowed only during, or shortly after, the active meal window, and only for a student with a booking (or with an override reason). "Shortly after" is the meal's grace period: marking is open from service start until service end + grace. Cancelled, leave and closed meals cannot be marked. (ADR-0025)
+- **BR-ATT-3** One attendance record per student and meal. Recording it (any source) turns a Booked meal into Meal Completed at once. Manual marks use `MANUAL_FALLBACK` and are audited; during outage mode they are linked to the outage window.
+- **BR-ATT-4** When a window closes, the worker pulls face verifications, then turns each remaining Booked meal into Meal Completed (attendance found) or No-show (BR-NS-1, BR-NS-7). It runs every 5 minutes, once per date and meal, and catches up on the previous two days.
+- **BR-ATT-5** An attendance import covers one meal window and is previewed before it is applied. It records `IMPORT` attendance only for Booked meals and for No-shows held during an outage (those events become `EXCLUDED`, `OUTAGE_REVIEW_DISMISSED`). Counted No-shows go to No-show review. (ADR-0025)
+- **BR-ATT-6** My Bookings (Spec §7) lists final records: Meal Completed, Cancelled (by the student or staff), Mess closed and No-show. A recurring meal the system cancelled because Default Booking was turned off is not shown. A verification time is shown only for face verification.
 
 ## BR-CLOS: Closures (Admin §F)
 

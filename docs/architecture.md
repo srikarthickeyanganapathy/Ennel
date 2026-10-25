@@ -49,13 +49,13 @@ Dependencies point inward only. Admin modules reuse student domain functions (fo
 
 ### 3.3 Providers (`src/infrastructure/`)
 
-| Interface                  | MVP implementation                                      | Notes                                                                                             |
-| -------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `Clock`                    | `SystemClock`; `FakeClock` for tests                    | The only source of "now" for services and jobs.                                                   |
-| `AttendanceProvider`       | `MockAttendanceProvider`                                | Driven by a dev-only endpoint and admin manual marking. Never fabricates verification timestamps. |
-| `PushNotificationProvider` | Expo push                                               | In-app notification rows are always written; push is best-effort.                                 |
-| `FileStorageProvider`      | Local disk under `STORAGE_DIR`                          | Signed, expiring URLs for complaint photos.                                                       |
-| `ReportExporter`           | CSV (`csv-stringify`), XLSX (`exceljs`), PDF (`pdfkit`) | Same row model for all three formats.                                                             |
+| Interface                  | MVP implementation                                      | Notes                                                                                                                                                                                                                                                                                                       |
+| -------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Clock`                    | `SystemClock`; `FakeClock` for tests                    | The only source of "now" for services and jobs.                                                                                                                                                                                                                                                             |
+| `AttendanceProvider`       | `UnconfiguredAttendanceProvider` (returns nothing)      | Pulled when a window closes (`modules/attendance/provider`). The real adapter needs the college's API. In development, `POST /api/v1/dev/attendance` pushes a simulated verification through `AttendanceRecorder`; tests use `FakeAttendanceProvider`. Never fabricates verification timestamps (ADR-0025). |
+| `PushNotificationProvider` | Expo push                                               | In-app notification rows are always written; push is best-effort.                                                                                                                                                                                                                                           |
+| `FileStorageProvider`      | Local disk under `STORAGE_DIR`                          | Signed, expiring URLs for complaint photos.                                                                                                                                                                                                                                                                 |
+| `ReportExporter`           | CSV (`csv-stringify`), XLSX (`exceljs`), PDF (`pdfkit`) | Same row model for all three formats.                                                                                                                                                                                                                                                                       |
 
 ### 3.4 Cross-cutting mechanisms
 
@@ -85,14 +85,14 @@ Student intent lives in three separate tables that never overwrite each other (R
 
 ### 3.6 Modules
 
-Student-facing: `auth`, `students`, `mess-config`, `slots` (live availability, Phase 3), `menus`, `bookings` (resolver, meal cards, book/change/cancel, Phase 4; `BookingReconciler`, `SeatAllocator` and the full-slot fallback, Phase 5), `idempotency` (ADR-0016), `forecasting` (show-up rate, BR-FC), `default-preferences` (Spec §8, Phase 5), `plan-ahead` (weekday rules, Spec §6.2, Phase 6), `leaves`, `no-shows`, `attendance`, `complaints`, `notifications`, `jobs`.
+Student-facing: `auth`, `students`, `mess-config`, `slots` (live availability, Phase 3), `menus`, `bookings` (resolver, meal cards, book/change/cancel, Phase 4; `BookingReconciler`, `SeatAllocator` and the full-slot fallback, Phase 5), `idempotency` (ADR-0016), `forecasting` (show-up rate, BR-FC), `default-preferences` (Spec §8, Phase 5), `plan-ahead` (weekday rules, Spec §6.2, Phase 6), `attendance` (provider port, `AttendanceRecorder`, window closing, Phase 7), `leaves`, `no-shows`, `complaints`, `notifications`, `jobs`. `bookings` also serves My Bookings (`BookingHistoryService`, Phase 7) and owns `BookingOutcomeService`, the only way attendance turns a booking Completed or No-show.
 Staff-facing (under `modules/admin/`): `admin-auth`, `staff-users`, `rbac`, `audit-log`, `admin-dashboard`, `admin-mess-config`, `admin-menus`, `admin-closures`, `admin-students`, `admin-bookings`, `admin-attendance`, `admin-no-shows`, `admin-leaves`, `admin-complaints`, `admin-announcements`, `admin-forecasting`, `admin-reports`, `admin-system`.
 
 Booking writes go through one service, `BookingCommandsService`, used by students (`StudentBookingsService`, wrapped in `IdempotencyService`) and staff (`AdminBookingOverridesService`, `BulkBookingsService`, wrapped in an audited transaction). It writes the date exception, the booking row and a booking event together (ADR-0003) and takes the slot/date advisory lock before counting seats (ADR-0004). `BookingDayService` builds the Home meal cards from `resolveEffectiveBooking` and `meal-card-rules`.
 
 ### 3.7 Background jobs (BullMQ, `modules/jobs`)
 
-`generate-default-bookings` (built in Phase 5: 00:30 IST via `upsertJobScheduler`, plus a catch-up run when the worker starts; ADR-0023), `close-attendance-window` (per meal window), `evaluate-no-show-thresholds`, `send-deadline-reminders`, `send-scheduled-announcements`, `process-roster-import`, `generate-large-report`. Every run records a `job_runs` row keyed by `(job_name, run_key)` so re-runs are no-ops, and every job takes time from `Clock`.
+`generate-default-bookings` (built in Phase 5: 00:30 IST via `upsertJobScheduler`, plus a catch-up run when the worker starts; ADR-0023), `close-attendance-window` (built in Phase 7: every 5 minutes, once per `date:meal`, catching up on the last two days; ADR-0025), `evaluate-no-show-thresholds`, `send-deadline-reminders`, `send-scheduled-announcements`, `process-roster-import`, `generate-large-report`. Every run records a `job_runs` row keyed by `(job_name, run_key)` so re-runs are no-ops, and every job takes time from `Clock`.
 
 ## 4. Clients
 
