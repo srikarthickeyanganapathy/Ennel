@@ -63,7 +63,7 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 
 - **BR-BOOK-4 Resolution order** (Rule 4): **closure > approved leave > one-day date exception > weekday rule > Default Booking**. One pure function, `resolveEffectiveBooking`. A date exception beats a weekday rule for that date, and the app shows which rule applied (Spec §6.2, ADR-0014).
 - **BR-BOOK-5** Default Booking, one-day exceptions and weekday rules are separate records and never overwrite each other. A one-time manual booking never turns Default Booking on (Rule 5, Spec §3 Screen 8).
-- **BR-BOOK-6** Default Booking for a meal applies only when the overall switch is on, the meal switch is on, the meal is not auto-disabled by the no-show engine, and a slot is set (Spec §8.1).
+- **BR-BOOK-6** Default Booking for a meal applies only when the overall switch is on, the meal switch is on, the meal is not auto-disabled by the no-show engine, and a slot is set (Spec §8.1). Weekday rules follow the overall switch and the auto-disable, but not the meal switch (BR-PLAN-4).
 - **BR-BOOK-7** There is at most one booking per student/date/meal. A change of slot or diet updates that row and appends a `booking_events` entry.
 - **BR-BOOK-8** Students may book dates from today up to today + `bookingHorizonDays` (_policy_, default **7**, ADR-0011).
 - **BR-BOOK-9** A meal with Default Booking on but no booking yet (for example a full slot under `ASK_STUDENT`) is labelled "Not Booked". Student writes (book, change, cancel, cancel today's meals) are idempotent (BR-IDEM-1) and return the updated card. A cancelled meal can be booked again until the last slot starts (BR-DEAD-5).
@@ -106,6 +106,13 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-DEF-4** Saving preferences (overall switch, one meal, or all meals) and finishing first-time setup reconcile the student's upcoming days immediately, in the same transaction. Only bookings owned by the recurring rule are created, moved or cancelled; one-day changes by the student and staff overrides are kept. The response lists what changed (Spec §8.3) and how many bookings were updated. (ADR-0023)
 - **BR-DEF-5** The nightly job runs at 00:30 IST in the worker process, one `job_runs` row per business date; finished runs are skipped, a run stuck in RUNNING for over an hour is retried, and a missed day runs when the worker starts. (ADR-0023)
 - **BR-DEF-6** A recurring booking cancelled by the system is labelled "Not Booked — Default Off". A meal auto-disabled by the no-show engine (BR-NS-5) cannot be switched back on by the student; staff or an approved appeal do that.
+
+## BR-PLAN: Plan Ahead (Spec §6)
+
+- **BR-PLAN-1** A one-date change from Plan Ahead is the same one-day exception as a change from Home: it affects only that date and never changes Default Booking or weekday rules. Dates are limited to today … today + `bookingHorizonDays`.
+- **BR-PLAN-2** A weekday rule sets the slot and meal type for one meal on chosen weekdays (IST). Two active rules for the same meal may not share a weekday. One save may cover several meals; each meal becomes its own rule. (ADR-0014, ADR-0024)
+- **BR-PLAN-3** Creating, editing or deleting a rule updates the student's upcoming bookings at once; only bookings owned by the recurring rules move. Edits and deletes need the version shown. Deleted rules are kept inactive for history.
+- **BR-PLAN-4** The overall Default Booking switch and a no-show auto-disable pause weekday rules; a meal's own switch does not. Paused rules are kept and shown as paused. (ADR-0024)
 
 ## BR-LEAVE: Leave (Rule 9, Spec §11)
 

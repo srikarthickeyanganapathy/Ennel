@@ -45,7 +45,7 @@ Section 6 shows how to tell which one it is.
 
 ## 2. What exists today, and what does not yet
 
-The project is built in phases. Phases 0–5 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
+The project is built in phases. Phases 0–6 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
 
 | Area                                                                                                                | Status                                                                                            |
 | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
@@ -56,7 +56,8 @@ The project is built in phases. Phases 0–5 are done. **Many screens you might 
 | Student: **Home** (meals for a date, book, change slot, meal type, cancel, countdowns, Cancel Today's Meals)        | ✅ Works (Phase 4)                                                                                |
 | Student: **Profile tab**                                                                                            | ⏳ Shows your name and Log Out. Viewing and editing your details (Spec §9) comes in a later phase |
 | Student: **Default Booking tab** (overall switch, per-meal ON/OFF, edit one meal, Change Slots for all meals)       | ✅ Works (Phase 5): saving updates your upcoming bookings at once                                 |
-| Student: Plan Ahead, My Bookings, leave, no-shows, complaints                                                       | ⏳ Phases 6–10                                                                                    |
+| Student: **Plan Ahead** (Home → Plan Ahead: change one date, or weekday rules such as "Mon/Wed lunch at 1:00 PM")   | ✅ Works (Phase 6): a one-date change always wins over a weekday rule                             |
+| Student: My Bookings, leave, no-shows, complaints                                                                   | ⏳ Phases 7–10                                                                                    |
 | Admin: sign in, change password, 2FA, sessions                                                                      | ✅ Works (Phase 2)                                                                                |
 | Admin: Staff & roles, Audit log                                                                                     | ✅ Works (Phase 2)                                                                                |
 | Admin: Students, Import roster, reset codes                                                                         | ✅ Works (Phase 2)                                                                                |
