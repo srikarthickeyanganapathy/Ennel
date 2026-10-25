@@ -123,7 +123,10 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-LEAVE-5** Upcoming / On Leave / Not on Leave are derived from dates and `now`; only `PENDING/APPROVED/REJECTED/CANCELLED` are stored.
 - **BR-LEAVE-6** Extend: the new end must be later than the current end, and the range is re-validated.
 - **BR-LEAVE-7** End early: the resume point is the first meal to book again. The earliest allowed resume point is the first meal whose cancellation deadline has not passed. Meals from the resume point onward are re-resolved, so Default Booking resumes.
-- **BR-LEAVE-8** Leave meals already in the past at approval time are not changed retroactively.
+- **BR-LEAVE-8** Leave meals already in the past at approval time are not changed retroactively. Meals whose slot has started are never paused or resumed.
+- **BR-LEAVE-9** A student's leave may start, and a student may resume, only at a meal whose cut-off has not passed: the cancellation deadline of the booked slot, or the meal's start when nothing is booked. Staff may use any meal that has not started. (ADR-0026)
+- **BR-LEAVE-10** When approval is required, extending an approved leave sends the extra days as a separate pending request. Staff-created leaves are approved at once. Create, end and correct by staff need a reason, are audited as overrides, and notify the student; approve and reject notify the student too (Admin §K).
+- **BR-LEAVE-11** After every leave change, uncovered paused meals are restored through the resolver with the full-slot fallback; if nothing wants them booked they are cancelled by the system, and if the slot is full the student is told to pick another slot. (ADR-0026)
 
 ## BR-NS: No-shows (Rule 10, Spec §10)
 
