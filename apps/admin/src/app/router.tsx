@@ -16,6 +16,7 @@ import { StudentsPage } from '@/features/students/pages/StudentsPage';
 import { AppShell } from '@/shared/layout/AppShell';
 import { BookingsPage } from '@/features/bookings/pages/BookingsPage';
 import { ClosuresPage } from '@/features/closures/pages/ClosuresPage';
+import { AttendancePage } from '@/features/attendance/pages/AttendancePage';
 import { RequireAuth, RequirePermission } from './route-guards';
 
 export const router = createBrowserRouter([
@@ -35,6 +36,14 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermission anyOf={['bookings:read']}>
                 <BookingsPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'attendance',
+            element: (
+              <RequirePermission anyOf={['attendance:read']}>
+                <AttendancePage />
               </RequirePermission>
             ),
           },
