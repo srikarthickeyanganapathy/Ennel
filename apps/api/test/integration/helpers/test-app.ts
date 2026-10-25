@@ -11,12 +11,15 @@ import { API_PREFIX } from '../../../src/config/api-prefix';
 import { Clock } from '../../../src/infrastructure/clock/clock';
 import { FakeClock } from '../../../src/infrastructure/clock/fake-clock';
 import { PrismaService } from '../../../src/infrastructure/database/prisma.service';
+import { AttendanceProvider } from '../../../src/modules/attendance/provider/attendance-provider';
+import { FakeAttendanceProvider } from './fake-attendance-provider';
 
 export interface TestApp {
   app: INestApplication;
   prisma: PrismaService;
   clock: FakeClock;
   rateLimiter: InMemoryRateLimiter;
+  attendanceProvider: FakeAttendanceProvider;
 }
 
 /**
@@ -26,6 +29,7 @@ export interface TestApp {
 export async function createTestApp(): Promise<TestApp> {
   const clock = new FakeClock(new Date());
   const rateLimiter = new InMemoryRateLimiter();
+  const attendanceProvider = new FakeAttendanceProvider();
   const config = { ...loadAppConfig(), storageDir: mkdtempSync(join(tmpdir(), 'ennel-storage-')) };
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(APP_CONFIG)
@@ -34,6 +38,8 @@ export async function createTestApp(): Promise<TestApp> {
     .useValue(clock)
     .overrideProvider(RateLimiter)
     .useValue(rateLimiter)
+    .overrideProvider(AttendanceProvider)
+    .useValue(attendanceProvider)
     .compile();
   const app = moduleRef.createNestApplication({
     logger: process.env.TEST_LOGS ? ['error'] : false,
@@ -41,5 +47,5 @@ export async function createTestApp(): Promise<TestApp> {
   app.setGlobalPrefix(API_PREFIX);
   // A bound port avoids supertest re-binding the server for each request.
   await app.listen(0, '127.0.0.1');
-  return { app, prisma: app.get(PrismaService), clock, rateLimiter };
+  return { app, prisma: app.get(PrismaService), clock, rateLimiter, attendanceProvider };
 }

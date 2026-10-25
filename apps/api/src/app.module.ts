@@ -26,6 +26,7 @@ import { BookingsModule } from './modules/bookings/bookings.module';
 import { AdminBookingsModule } from './modules/admin/admin-bookings/admin-bookings.module';
 import { AdminDashboardModule } from './modules/admin/admin-dashboard/admin-dashboard.module';
 import { AdminClosuresModule } from './modules/admin/admin-closures/admin-closures.module';
+import { AdminAttendanceModule } from './modules/admin/admin-attendance/admin-attendance.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { PlanAheadModule } from './modules/plan-ahead/plan-ahead.module';
@@ -51,6 +52,7 @@ import { StudentsModule } from './modules/students/students.module';
     AdminBookingsModule,
     AdminDashboardModule,
     AdminClosuresModule,
+    AdminAttendanceModule,
     StudentsModule,
     PlanAheadModule,
     // Staff surface (/api/v1/admin)

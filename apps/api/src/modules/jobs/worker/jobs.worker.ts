@@ -10,6 +10,10 @@ import { Queue, Worker } from 'bullmq';
 import Redis from 'ioredis';
 import { APP_CONFIG, type AppConfig } from '../../../config/app-config';
 import {
+  CLOSE_ATTENDANCE_WINDOWS,
+  CloseAttendanceWindowsService,
+} from '../services/close-attendance-windows.service';
+import {
   GENERATE_DEFAULT_BOOKINGS,
   GenerateDefaultBookingsService,
 } from '../services/generate-default-bookings.service';
@@ -17,10 +21,13 @@ import {
 const QUEUE_NAME = 'ennel-jobs';
 /** 00:30 IST: after midnight, so "tomorrow … today + horizon" moves forward by one day. */
 const NIGHTLY_PATTERN = '30 0 * * *';
+/** Every 5 minutes: a closed window is finalised within minutes (BR-NS-1). */
+const WINDOW_PATTERN = '*/5 * * * *';
 
 /**
  * The BullMQ worker process (`pnpm dev:worker`). It schedules the nightly Default Booking run and
- * starts one catch-up run on boot; job_runs keeps a date from being processed twice.
+ * the attendance window closer, and starts one catch-up run of each on boot; job_runs keeps a
+ * date (or date and meal) from being processed twice.
  */
 @Injectable()
 export class JobsWorker implements OnModuleInit, OnModuleDestroy {
@@ -32,6 +39,7 @@ export class JobsWorker implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly generation: GenerateDefaultBookingsService,
+    private readonly windows: CloseAttendanceWindowsService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -53,12 +61,17 @@ export class JobsWorker implements OnModuleInit, OnModuleDestroy {
         opts: { attempts: 3, backoff: { type: 'exponential', delay: 60_000 } },
       },
     );
-    await this.queue.add(
-      GENERATE_DEFAULT_BOOKINGS,
-      {},
-      { attempts: 3, removeOnComplete: 100, removeOnFail: 100 },
+    await this.queue.upsertJobScheduler(
+      CLOSE_ATTENDANCE_WINDOWS,
+      { pattern: WINDOW_PATTERN, tz: BUSINESS_TIME_ZONE },
+      { name: CLOSE_ATTENDANCE_WINDOWS, opts: { removeOnComplete: 100, removeOnFail: 100 } },
     );
-    this.logger.log(`Worker ready; ${GENERATE_DEFAULT_BOOKINGS} runs daily at 00:30 IST`);
+    for (const name of [GENERATE_DEFAULT_BOOKINGS, CLOSE_ATTENDANCE_WINDOWS]) {
+      await this.queue.add(name, {}, { attempts: 3, removeOnComplete: 100, removeOnFail: 100 });
+    }
+    this.logger.log(
+      `Worker ready; ${GENERATE_DEFAULT_BOOKINGS} runs daily at 00:30 IST, ${CLOSE_ATTENDANCE_WINDOWS} every 5 minutes`,
+    );
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -69,6 +82,7 @@ export class JobsWorker implements OnModuleInit, OnModuleDestroy {
 
   private async handle(name: string): Promise<unknown> {
     if (name === GENERATE_DEFAULT_BOOKINGS) return this.generation.run();
+    if (name === CLOSE_ATTENDANCE_WINDOWS) return this.windows.run();
     throw new Error(`Unknown job ${name}`);
   }
 }
