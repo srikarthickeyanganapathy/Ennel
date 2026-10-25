@@ -28,6 +28,7 @@ import { AdminDashboardModule } from './modules/admin/admin-dashboard/admin-dash
 import { AdminClosuresModule } from './modules/admin/admin-closures/admin-closures.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { PlanAheadModule } from './modules/plan-ahead/plan-ahead.module';
 import { StudentsModule } from './modules/students/students.module';
 
 @Module({
@@ -51,6 +52,7 @@ import { StudentsModule } from './modules/students/students.module';
     AdminDashboardModule,
     AdminClosuresModule,
     StudentsModule,
+    PlanAheadModule,
     // Staff surface (/api/v1/admin)
     AdminCoreModule,
     AuditLogModule,

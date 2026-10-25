@@ -92,4 +92,20 @@ describe('resolveEffectiveBooking (BR-BOOK-4: closure > leave > date exception >
     expect(resolve({ isAutoDisabled: true })).toBe('NONE');
     expect(resolve({ slotId: undefined })).toBe('NONE');
   });
+
+  it('pauses weekday rules with the overall switch or a no-show auto-disable, not the meal switch (ADR-0024)', () => {
+    const withRule = (intent: Partial<DefaultIntent>) =>
+      resolveEffectiveBooking({
+        ...NOTHING,
+        weekdayRule: WEEKDAY,
+        defaultIntent: { ...DEFAULT_ON, ...intent },
+      });
+    expect(withRule({ isOverallEnabled: false })).toEqual({ kind: 'NONE', appliedRule: 'NONE' });
+    expect(withRule({ isAutoDisabled: true })).toEqual({ kind: 'NONE', appliedRule: 'NONE' });
+    expect(withRule({ isMealEnabled: false })).toMatchObject({
+      kind: 'BOOK',
+      appliedRule: 'WEEKDAY_RULE',
+      slotId: 'weekday-slot',
+    });
+  });
 });

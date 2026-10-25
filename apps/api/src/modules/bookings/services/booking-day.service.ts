@@ -14,7 +14,6 @@ import { type MessPolicy } from '../../mess-config/domain/mess-policy';
 import { GetMessPolicyService } from '../../mess-config/services/get-mess-policy.service';
 import { isWithinBookingHorizon, lastBookableDate } from '../../slots/domain/slot-availability';
 import { deriveBookingLabel, mealActions } from '../domain/meal-card-rules';
-import { defaultChoice } from '../domain/resolve-effective-booking';
 import {
   type BookingRow,
   BookingsRepository,
@@ -77,7 +76,7 @@ export class BookingDayService {
 }
 
 function toCard(meal: MealDayRow, context: CardContext): MealCard {
-  const { isClosed, isOnLeave, defaultIntent, resolution, recurring } = resolveMeal(
+  const { isClosed, isOnLeave, resolution, recurring } = resolveMeal(
     meal,
     context.day,
     context.date,
@@ -100,7 +99,7 @@ function toCard(meal: MealDayRow, context: CardContext): MealCard {
       },
       resolution,
       recurring,
-      isDefaultOff: !meal.weekdayRule && !defaultChoice(defaultIntent),
+      isDefaultOff: recurring.kind === 'NONE',
     }),
     appliedRule: booking ? ruleForBooking(booking) : resolution.appliedRule,
     closureTitle: meal.closureTitle,

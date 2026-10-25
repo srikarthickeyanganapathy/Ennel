@@ -52,7 +52,7 @@ export function resolveRecurring(
   weekdayRule: SlotChoice | null,
   defaultIntent: DefaultIntent | null,
 ): Resolution {
-  if (weekdayRule) {
+  if (weekdayRule && !isRecurringPaused(defaultIntent)) {
     return {
       kind: 'BOOK',
       source: BookingSource.PLAN_AHEAD_WEEKDAY,
@@ -77,6 +77,15 @@ function fromDateException(exception: DateExceptionIntent): Resolution {
     slotId: exception.slotId,
     dietType: exception.dietType,
   };
+}
+
+/**
+ * ADR-0024: the overall switch "pauses automatic booking for all meals" (Spec §8.1), and a
+ * no-show auto-disable stops automatic booking for that meal (BR-NS-5), so both pause weekday
+ * rules too. A meal's own switch does not: a weekday rule is an explicit choice for those days.
+ */
+export function isRecurringPaused(intent: DefaultIntent | null): boolean {
+  return intent !== null && (!intent.isOverallEnabled || intent.isAutoDisabled);
 }
 
 /** BR-BOOK-6: Default Booking applies only with both switches on, no auto-disable and a slot. */
