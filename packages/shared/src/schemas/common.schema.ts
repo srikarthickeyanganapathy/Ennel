@@ -53,3 +53,6 @@ export const errorResponseSchema = z.object({
   requestId: z.string(),
 });
 export type ErrorResponse = z.infer<typeof errorResponseSchema>;
+
+/** 0 = Sunday … 6 = Saturday, in IST (BR-TIME-1). */
+export const weekdaySchema = z.number().int().min(0).max(6);

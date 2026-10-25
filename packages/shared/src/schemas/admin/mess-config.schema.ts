@@ -1,12 +1,16 @@
 import { z } from 'zod';
 import { MINUTES_PER_DAY } from '../../constants/time.js';
-import { businessDateSchema, overrideReasonSchema, uuidSchema } from '../common.schema.js';
+import {
+  businessDateSchema,
+  overrideReasonSchema,
+  uuidSchema,
+  weekdaySchema,
+} from '../common.schema.js';
 import { mealTypeSchema } from '../meal-config.schema.js';
 
 export const minuteOfDaySchema = z.number().int().min(0).max(MINUTES_PER_DAY);
 const optionalReason = overrideReasonSchema.optional();
 const capacitySchema = z.number().int().min(0).max(100_000);
-export const weekdaySchema = z.number().int().min(0).max(6);
 
 export const adminSlotSchema = z.object({
   id: uuidSchema,

@@ -6,4 +6,5 @@ export * from './profile.schema.js';
 export * from './slot-availability.schema.js';
 export * from './bookings.schema.js';
 export * from './default-booking.schema.js';
+export * from './weekday-rules.schema.js';
 export * from './admin/index.js';
