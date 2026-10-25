@@ -106,13 +106,11 @@ describe('HomeScreen (Spec §4)', () => {
 
   it('cancels only after confirmation, with an idempotency key, and says so', async () => {
     jest.mocked(getDay).mockResolvedValue(day([BOOKED_LUNCH]));
-    jest
-      .mocked(cancelBooking)
-      .mockResolvedValue({
-        ...BOOKED_LUNCH,
-        label: 'CANCELLED',
-        booking: { ...BOOKED_LUNCH.booking!, status: 'CANCELLED' },
-      });
+    jest.mocked(cancelBooking).mockResolvedValue({
+      ...BOOKED_LUNCH,
+      label: 'CANCELLED',
+      booking: { ...BOOKED_LUNCH.booking!, status: 'CANCELLED' },
+    });
     jest.mocked(confirmAction).mockResolvedValueOnce(false).mockResolvedValueOnce(true);
     await renderWithProviders(<HomeScreen />);
 
@@ -127,24 +125,22 @@ describe('HomeScreen (Spec §4)', () => {
   });
 
   it('explains why an action is closed instead of failing on tap (Spec §14)', async () => {
-    jest
-      .mocked(getDay)
-      .mockResolvedValue(
-        day([
-          card({
-            actions: {
-              book: {
-                allowed: false,
-                reason: 'All slots for this meal have started.',
-                deadlineAt: null,
-              },
-              changeSlot: CLOSED,
-              changeDiet: CLOSED,
-              cancel: CLOSED,
+    jest.mocked(getDay).mockResolvedValue(
+      day([
+        card({
+          actions: {
+            book: {
+              allowed: false,
+              reason: 'All slots for this meal have started.',
+              deadlineAt: null,
             },
-          }),
-        ]),
-      );
+            changeSlot: CLOSED,
+            changeDiet: CLOSED,
+            cancel: CLOSED,
+          },
+        }),
+      ]),
+    );
     await renderWithProviders(<HomeScreen />);
     expect(await screen.findByText('All slots for this meal have started.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Book Lunch' })).toBeNull();
