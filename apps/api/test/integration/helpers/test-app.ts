@@ -12,7 +12,9 @@ import { Clock } from '../../../src/infrastructure/clock/clock';
 import { FakeClock } from '../../../src/infrastructure/clock/fake-clock';
 import { PrismaService } from '../../../src/infrastructure/database/prisma.service';
 import { AttendanceProvider } from '../../../src/modules/attendance/provider/attendance-provider';
+import { PushNotificationProvider } from '../../../src/infrastructure/push/push-notification.provider';
 import { FakeAttendanceProvider } from './fake-attendance-provider';
+import { FakePushProvider } from './fake-push-provider';
 
 export interface TestApp {
   app: INestApplication;
@@ -20,6 +22,7 @@ export interface TestApp {
   clock: FakeClock;
   rateLimiter: InMemoryRateLimiter;
   attendanceProvider: FakeAttendanceProvider;
+  pushProvider: FakePushProvider;
 }
 
 /**
@@ -30,6 +33,7 @@ export async function createTestApp(): Promise<TestApp> {
   const clock = new FakeClock(new Date());
   const rateLimiter = new InMemoryRateLimiter();
   const attendanceProvider = new FakeAttendanceProvider();
+  const pushProvider = new FakePushProvider();
   const config = { ...loadAppConfig(), storageDir: mkdtempSync(join(tmpdir(), 'ennel-storage-')) };
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(APP_CONFIG)
@@ -40,6 +44,8 @@ export async function createTestApp(): Promise<TestApp> {
     .useValue(rateLimiter)
     .overrideProvider(AttendanceProvider)
     .useValue(attendanceProvider)
+    .overrideProvider(PushNotificationProvider)
+    .useValue(pushProvider)
     .compile();
   const app = moduleRef.createNestApplication({
     logger: process.env.TEST_LOGS ? ['error'] : false,
@@ -47,5 +53,12 @@ export async function createTestApp(): Promise<TestApp> {
   app.setGlobalPrefix(API_PREFIX);
   // A bound port avoids supertest re-binding the server for each request.
   await app.listen(0, '127.0.0.1');
-  return { app, prisma: app.get(PrismaService), clock, rateLimiter, attendanceProvider };
+  return {
+    app,
+    prisma: app.get(PrismaService),
+    clock,
+    rateLimiter,
+    attendanceProvider,
+    pushProvider,
+  };
 }

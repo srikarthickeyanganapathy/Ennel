@@ -16,7 +16,7 @@ export interface StudentNotice {
 
 /**
  * In-app notifications written in the caller's transaction, so a notice exists only if the
- * change it describes was committed. Push delivery is added with the notification centre (Phase 10).
+ * change it describes was committed. Pushes go out after commit through PushDispatcher.
  */
 @Injectable()
 export class NotifyStudentsService {

@@ -18,6 +18,10 @@ export const envSchema = z.object({
   STORAGE_DIR: z.string().min(1).default('./storage'),
   FILE_SIGNING_SECRET: z.string().min(32),
   ADMIN_WEB_ORIGIN: z.string().url().default('http://localhost:5173'),
+  /** Push delivery (ADR-0028): off by default; `expo` sends through Expo's push service. */
+  PUSH_PROVIDER: z.enum(['none', 'expo']).default('none'),
+  /** Optional Expo access token, needed only when the Expo project enforces push security. */
+  EXPO_ACCESS_TOKEN: z.string().min(1).optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

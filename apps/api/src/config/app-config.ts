@@ -21,6 +21,7 @@ export interface AppConfig {
   storageDir: string;
   fileSigningSecret: string;
   adminWebOrigin: string;
+  push: { provider: Env['PUSH_PROVIDER']; expoAccessToken: string | null };
 }
 
 /** The repo keeps a single .env at its root; values already in the environment win. */
@@ -53,6 +54,7 @@ export function parseAppConfig(source: NodeJS.ProcessEnv): AppConfig {
     storageDir: resolve(__dirname, '../..', env.STORAGE_DIR),
     fileSigningSecret: env.FILE_SIGNING_SECRET,
     adminWebOrigin: env.ADMIN_WEB_ORIGIN,
+    push: { provider: env.PUSH_PROVIDER, expoAccessToken: env.EXPO_ACCESS_TOKEN ?? null },
   };
 }
 

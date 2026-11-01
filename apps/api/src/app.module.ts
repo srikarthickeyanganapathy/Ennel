@@ -9,6 +9,7 @@ import { CryptoModule } from './infrastructure/crypto/crypto.module';
 import { DatabaseModule } from './infrastructure/database/database.module';
 import { RedisModule } from './infrastructure/redis/redis.module';
 import { StorageModule } from './infrastructure/storage/storage.module';
+import { PushModule } from './infrastructure/push/push.module';
 import { AdminAuthModule } from './modules/admin/admin-auth/admin-auth.module';
 import { AdminCoreModule } from './modules/admin/admin-core.module';
 import { AdminMenusModule } from './modules/admin/admin-menus/admin-menus.module';
@@ -29,11 +30,15 @@ import { AdminClosuresModule } from './modules/admin/admin-closures/admin-closur
 import { AdminAttendanceModule } from './modules/admin/admin-attendance/admin-attendance.module';
 import { AdminLeavesModule } from './modules/admin/admin-leaves/admin-leaves.module';
 import { AdminNoShowsModule } from './modules/admin/admin-no-shows/admin-no-shows.module';
+import { AdminComplaintsModule } from './modules/admin/admin-complaints/admin-complaints.module';
+import { AdminAnnouncementsModule } from './modules/admin/admin-announcements/admin-announcements.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { PlanAheadModule } from './modules/plan-ahead/plan-ahead.module';
 import { LeavesModule } from './modules/leaves/leaves.module';
 import { NoShowsModule } from './modules/no-shows/no-shows.module';
+import { ComplaintsModule } from './modules/complaints/complaints.module';
+import { NotificationCentreModule } from './modules/notifications/notification-centre.module';
 import { StudentsModule } from './modules/students/students.module';
 
 @Module({
@@ -43,6 +48,7 @@ import { StudentsModule } from './modules/students/students.module';
     DatabaseModule,
     RedisModule,
     StorageModule,
+    PushModule,
     CryptoModule,
     RateLimitModule,
     HealthModule,
@@ -59,10 +65,14 @@ import { StudentsModule } from './modules/students/students.module';
     AdminAttendanceModule,
     AdminLeavesModule,
     AdminNoShowsModule,
+    AdminComplaintsModule,
+    AdminAnnouncementsModule,
     StudentsModule,
     PlanAheadModule,
     LeavesModule,
     NoShowsModule,
+    NotificationCentreModule,
+    ComplaintsModule,
     // Staff surface (/api/v1/admin)
     AdminCoreModule,
     AuditLogModule,

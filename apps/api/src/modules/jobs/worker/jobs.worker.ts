@@ -17,12 +17,18 @@ import {
   GENERATE_DEFAULT_BOOKINGS,
   GenerateDefaultBookingsService,
 } from '../services/generate-default-bookings.service';
+import {
+  SEND_SCHEDULED_ANNOUNCEMENTS,
+  SendScheduledAnnouncementsService,
+} from '../services/send-scheduled-announcements.service';
 
 const QUEUE_NAME = 'ennel-jobs';
 /** 00:30 IST: after midnight, so "tomorrow … today + horizon" moves forward by one day. */
 const NIGHTLY_PATTERN = '30 0 * * *';
 /** Every 5 minutes: a closed window is finalised within minutes (BR-NS-1). */
 const WINDOW_PATTERN = '*/5 * * * *';
+/** Every minute: a scheduled announcement goes out within a minute of its time (Admin §M). */
+const ANNOUNCEMENT_PATTERN = '* * * * *';
 
 /**
  * The BullMQ worker process (`pnpm dev:worker`). It schedules the nightly Default Booking run and
@@ -40,6 +46,7 @@ export class JobsWorker implements OnModuleInit, OnModuleDestroy {
     @Inject(APP_CONFIG) private readonly config: AppConfig,
     private readonly generation: GenerateDefaultBookingsService,
     private readonly windows: CloseAttendanceWindowsService,
+    private readonly announcements: SendScheduledAnnouncementsService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -66,11 +73,16 @@ export class JobsWorker implements OnModuleInit, OnModuleDestroy {
       { pattern: WINDOW_PATTERN, tz: BUSINESS_TIME_ZONE },
       { name: CLOSE_ATTENDANCE_WINDOWS, opts: { removeOnComplete: 100, removeOnFail: 100 } },
     );
+    await this.queue.upsertJobScheduler(
+      SEND_SCHEDULED_ANNOUNCEMENTS,
+      { pattern: ANNOUNCEMENT_PATTERN, tz: BUSINESS_TIME_ZONE },
+      { name: SEND_SCHEDULED_ANNOUNCEMENTS, opts: { removeOnComplete: 100, removeOnFail: 100 } },
+    );
     for (const name of [GENERATE_DEFAULT_BOOKINGS, CLOSE_ATTENDANCE_WINDOWS]) {
       await this.queue.add(name, {}, { attempts: 3, removeOnComplete: 100, removeOnFail: 100 });
     }
     this.logger.log(
-      `Worker ready; ${GENERATE_DEFAULT_BOOKINGS} runs daily at 00:30 IST, ${CLOSE_ATTENDANCE_WINDOWS} every 5 minutes`,
+      `Worker ready; ${GENERATE_DEFAULT_BOOKINGS} runs daily at 00:30 IST, ${CLOSE_ATTENDANCE_WINDOWS} every 5 minutes, ${SEND_SCHEDULED_ANNOUNCEMENTS} every minute`,
     );
   }
 
@@ -83,6 +95,7 @@ export class JobsWorker implements OnModuleInit, OnModuleDestroy {
   private async handle(name: string): Promise<unknown> {
     if (name === GENERATE_DEFAULT_BOOKINGS) return this.generation.run();
     if (name === CLOSE_ATTENDANCE_WINDOWS) return this.windows.run();
+    if (name === SEND_SCHEDULED_ANNOUNCEMENTS) return this.announcements.run();
     throw new Error(`Unknown job ${name}`);
   }
 }
