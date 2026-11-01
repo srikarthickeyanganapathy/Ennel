@@ -118,6 +118,12 @@ describe('admin dashboard (Admin §C)', () => {
       canChooseDate: true,
       pending: { leaveApprovals: 1, openComplaints: 0 },
     });
+    // The sidebar badges read the same counts without the rest of the dashboard.
+    const pending = await request(ctx.app.getHttpServer())
+      .get('/api/v1/admin/dashboard/pending')
+      .set({ Authorization: `Bearer ${manager}` })
+      .expect(200);
+    expect(pending.body).toEqual(body.pending);
     const lunch = body.meals.find((meal: { mealType: string }) => meal.mealType === 'LUNCH');
     // One past day at 50% show-up: 3 booked → 2 expected, flagged low-confidence (BR-FC-1).
     expect(lunch).toMatchObject({
