@@ -7,6 +7,10 @@ export function formatDateTime(iso: string | null | undefined): string {
   return formatInTimeZone(new Date(iso), BUSINESS_TIME_ZONE, 'd MMM yyyy, h:mm a');
 }
 
+export function formatTime(iso: string): string {
+  return formatInTimeZone(new Date(iso), BUSINESS_TIME_ZONE, 'h:mm a');
+}
+
 /** Business dates are calendar dates (ADR-0002), so they are formatted without a time zone shift. */
 export function formatBusinessDate(
   date: string | null | undefined,

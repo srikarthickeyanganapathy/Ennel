@@ -22,6 +22,7 @@
   --color-success-surface: var(--ennel-success-surface);
   --color-info: var(--ennel-info);
   --color-info-surface: var(--ennel-info-surface);
+  --color-neutral-surface: var(--ennel-neutral-surface);
   /* shadcn/ui token names mapped onto the ENNEL palette. */
   --color-destructive: var(--ennel-danger);
   --color-ring: var(--ennel-primary);

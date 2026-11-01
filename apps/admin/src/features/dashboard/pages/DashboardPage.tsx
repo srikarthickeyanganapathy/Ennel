@@ -1,25 +1,31 @@
-import { type PendingWork } from '@ennel/shared';
+import { type MealType } from '@ennel/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link } from 'react-router';
-import { useAuth, usePermissions } from '@/features/auth/auth-context';
+import { usePermissions } from '@/features/auth/auth-context';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { QueryBoundary } from '@/shared/components/QueryStates';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardHeader } from '@/shared/components/ui/card';
-import { Input } from '@/shared/components/ui/form-controls';
-import { PageHeader } from '@/shared/layout/PageHeader';
-import { formatBusinessDate, formatDateTime } from '@/shared/lib/format';
 import { getDashboard } from '../api/dashboard-api';
-import { MealSummaryCard } from '../components/MealSummaryCard';
-import { TrendCharts } from '../components/TrendCharts';
+import { AnnouncementsTodayCard } from '../components/AnnouncementsTodayCard';
+import { DashboardHeader } from '../components/DashboardHeader';
+import { MealCountCard } from '../components/MealCountCard';
+import { MealKpis } from '../components/MealKpis';
+import { NeedsActionCard } from '../components/NeedsActionCard';
+import { SlotOccupancy } from '../components/SlotOccupancy';
+import { TrendCard } from '../components/TrendCard';
 
-/** Admin §C: today (or a chosen date) at a glance; refreshes every minute. */
+/**
+ * Admin §C live dashboard, built from the Figma "Admin — Live dashboard" desktop and mobile
+ * frames. Refreshes every minute. On phones the order follows the mobile frame; from `xl` up the
+ * cards are placed on the desktop grid.
+ */
 export function DashboardPage() {
-  const { me } = useAuth();
   const can = usePermissions();
   const canSee = can('dashboard:read') || can('dashboard:read-today');
   const [date, setDate] = useState<string | undefined>(undefined);
+  const [chosenMeal, setChosenMeal] = useState<MealType | null>(null);
   const dashboard = useQuery({
     queryKey: ['dashboard', date],
     queryFn: () => getDashboard(date),
@@ -27,27 +33,20 @@ export function DashboardPage() {
     refetchInterval: 60_000,
   });
   const data = dashboard.data;
+  const meals = data?.meals ?? [];
+  const meal = meals.find((item) => item.mealType === chosenMeal) ?? meals[0] ?? null;
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Dashboard"
-        description={
-          data
-            ? `${formatBusinessDate(data.date)}${data.date === data.today ? ' (today)' : ''} · updated ${formatDateTime(data.generatedAt)}`
-            : `Signed in as ${me?.fullName ?? ''}`
-        }
-        actions={
-          data?.canChooseDate ? (
-            <Input
-              type="date"
-              aria-label="Dashboard date"
-              className="w-40"
-              value={date ?? data.date}
-              onChange={(event) => setDate(event.target.value || undefined)}
-            />
-          ) : null
-        }
+      <DashboardHeader
+        date={data?.date ?? null}
+        today={data?.today ?? null}
+        generatedAt={data?.generatedAt ?? null}
+        canChooseDate={data?.canChooseDate ?? false}
+        onDateChange={setDate}
+        meals={meals}
+        selectedMeal={meal?.mealType ?? null}
+        onMealChange={setChosenMeal}
       />
       {canSee ? (
         <QueryBoundary
@@ -55,16 +54,27 @@ export function DashboardPage() {
           error={dashboard.error}
           onRetry={() => void dashboard.refetch()}
         >
-          {data ? (
-            <>
-              <div className="grid gap-4 lg:grid-cols-3">
-                {data.meals.map((meal) => (
-                  <MealSummaryCard key={meal.mealType} meal={meal} />
-                ))}
+          {data && meal ? (
+            <div className="grid gap-4 sm:gap-6 xl:grid-cols-3">
+              <div className="order-2 xl:col-span-3 xl:row-start-1">
+                <MealKpis meal={meal} />
               </div>
-              <PendingWorkCards pending={data.pending} />
-              <TrendCharts trend={data.trend} />
-            </>
+              <div className="order-3 xl:col-span-2 xl:row-span-2 xl:row-start-2 xl:self-start">
+                <SlotOccupancy meal={meal} />
+              </div>
+              <div className="order-1 xl:col-start-3 xl:row-start-2">
+                <MealCountCard meal={meal} date={data.date} />
+              </div>
+              <div className="order-4 xl:col-start-3 xl:row-start-3">
+                <NeedsActionCard pending={data.pending} />
+              </div>
+              <div className="order-5 xl:col-span-2 xl:row-start-4">
+                <TrendCard trend={data.trend} />
+              </div>
+              <div className="order-6 xl:col-start-3 xl:row-start-4">
+                <AnnouncementsTodayCard date={data.date} />
+              </div>
+            </div>
           ) : null}
         </QueryBoundary>
       ) : null}
@@ -73,55 +83,30 @@ export function DashboardPage() {
   );
 }
 
-const PENDING: { key: keyof PendingWork; label: string }[] = [
-  { key: 'leaveApprovals', label: 'Leave approvals' },
-  { key: 'openComplaints', label: 'Open complaints' },
-  { key: 'noShowAppeals', label: 'No-show appeals' },
-  { key: 'attendanceIssues', label: 'Attendance issues' },
-];
-
-/** Pending-work counts; their pages arrive with the leave, complaint and no-show phases. */
-function PendingWorkCards({ pending }: { pending: PendingWork }) {
-  return (
-    <Card>
-      <CardHeader title="Pending work" />
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {PENDING.map(({ key, label }) => (
-          <div key={key} className="rounded-md bg-muted p-3">
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className={`text-2xl font-semibold ${pending[key] > 0 ? 'text-warning' : ''}`}>
-              {pending[key]}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    </Card>
-  );
-}
-
+/** Admin §C quick actions: publish menu, send announcement, open the attendance counter. */
 function QuickActions() {
   return (
     <Card>
       <CardHeader title="Quick actions" />
       <div className="flex flex-wrap gap-2">
-        <PermissionGate permissions={['bookings:read']}>
-          <Button variant="outline" asChild>
-            <Link to="/bookings">Bookings</Link>
-          </Button>
-        </PermissionGate>
         <PermissionGate permissions={['menus:publish']}>
           <Button variant="outline" asChild>
             <Link to="/menus">Publish menu</Link>
           </Button>
         </PermissionGate>
-        <PermissionGate permissions={['roster:import']}>
+        <PermissionGate permissions={['announcements:manage']}>
           <Button variant="outline" asChild>
-            <Link to="/students/import">Import roster</Link>
+            <Link to="/announcements">Send announcement</Link>
           </Button>
         </PermissionGate>
-        <PermissionGate permissions={['mess-config:read']}>
+        <PermissionGate permissions={['attendance:read']}>
           <Button variant="outline" asChild>
-            <Link to="/mess-config">Slots and capacities</Link>
+            <Link to="/attendance">Open attendance counter</Link>
+          </Button>
+        </PermissionGate>
+        <PermissionGate permissions={['bookings:read']}>
+          <Button variant="outline" asChild>
+            <Link to="/bookings">Bookings</Link>
           </Button>
         </PermissionGate>
       </div>

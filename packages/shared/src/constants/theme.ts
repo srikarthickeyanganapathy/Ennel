@@ -19,6 +19,8 @@ export const THEME_COLORS = {
   successSurface: '#E7F4EC',
   info: '#2B6CB0',
   infoSurface: '#EBF4FF',
+  /** Segmented controls and quiet fills (Figma `color/neutral-soft`). */
+  neutralSurface: '#EEF2F0',
 } as const;
 
 export const THEME_RADII = {
