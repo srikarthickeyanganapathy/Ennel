@@ -18,6 +18,7 @@ import { useDay } from '@/features/bookings/hooks/use-bookings';
 import { useLeaves } from '@/features/leave/hooks/use-leaves';
 import { describeRange } from '@/features/leave/utils/leave-text';
 import { NoShowWarnings } from '@/features/no-shows/components/NoShowWarnings';
+import { NotificationBell } from '@/features/notifications/components/NotificationBell';
 import { DayMeals } from '../components/DayMeals';
 
 /** Spec §4 Home: the student's meals for a date within the booking period. */
@@ -48,12 +49,20 @@ function HomeContent({
   const tomorrow = addBusinessDays(day.today, 1);
   return (
     <Screen>
-      <StepHeader
-        title={`Welcome, ${me.data?.fullName ?? ''}`}
-        subtitle={[me.data?.blockName, me.data?.roomNumber ? `Room ${me.data.roomNumber}` : null]
-          .filter(Boolean)
-          .join(' • ')}
-      />
+      <View className="flex-row items-start justify-between gap-3">
+        <View className="flex-1">
+          <StepHeader
+            title={`Welcome, ${me.data?.fullName ?? ''}`}
+            subtitle={[
+              me.data?.blockName,
+              me.data?.roomNumber ? `Room ${me.data.roomNumber}` : null,
+            ]
+              .filter(Boolean)
+              .join(' • ')}
+          />
+        </View>
+        <NotificationBell />
+      </View>
       <LeaveBanner />
       <NoShowWarnings />
       <DateSwitcher day={day} tomorrow={tomorrow} onDateChange={onDateChange} />

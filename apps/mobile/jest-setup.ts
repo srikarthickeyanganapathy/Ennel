@@ -20,6 +20,14 @@ export const mockRouter = {
   back: jest.fn(),
 };
 
+/** The last `usePreventRemove` registration, so tests can check the unsaved-changes guard. */
+export const mockPreventRemove: { isActive: boolean; onRemove: ((event: unknown) => void) | null } =
+  {
+    isActive: false,
+    onRemove: null,
+  };
+export const mockNavigation = { dispatch: jest.fn() };
+
 /** Whether the screen under test is the focused route; set false to model a screen under the stack. */
 export const mockFocus = { isFocused: true };
 
@@ -33,6 +41,11 @@ jest.mock('expo-router', () => {
         if (mockFocus.isFocused) effect();
       }, [effect]),
     Redirect: () => null,
+    useNavigation: () => mockNavigation,
+    usePreventRemove: (isActive: boolean, onRemove: (event: unknown) => void) => {
+      mockPreventRemove.isActive = isActive;
+      mockPreventRemove.onRemove = onRemove;
+    },
   };
 });
 
@@ -44,5 +57,8 @@ jest.mock('expo-image-picker', () => ({
 beforeEach(() => {
   mockSecureStore.clear();
   mockFocus.isFocused = true;
+  mockPreventRemove.isActive = false;
+  mockPreventRemove.onRemove = null;
+  mockNavigation.dispatch.mockReset();
   Object.values(mockRouter).forEach((fn) => fn.mockReset());
 });
