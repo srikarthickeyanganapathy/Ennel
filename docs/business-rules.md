@@ -137,7 +137,9 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 - **BR-NS-5** At `noShowDisableThreshold` (_policy_, default **5**), Default Booking is auto-disabled for that meal only. Preferences are preserved, manual booking is still allowed, and the student is told why. (ADR-0009)
 - **BR-NS-6** Re-enable after auto-disable: Default Booking stays off. The student may switch it back on once their rolling count is below the disable threshold. Staff may re-enable at any time with a reason. If the event that caused the disable is overturned by an approved appeal and the count drops below the threshold, the disable is lifted automatically.
 - **BR-NS-7** If outage mode was active during the meal window, missing-attendance events are created as `HELD_FOR_REVIEW` and do not count until staff confirm them (Admin §I).
-- **BR-NS-8** Staff reset marks the student's counted events for that meal as `EXCLUDED/STAFF_RESET` with a mandatory reason.
+- **BR-NS-8** Staff reset marks the student's counted events for that meal as `EXCLUDED/STAFF_RESET` with a mandatory reason. A reset does not switch Default Booking back on by itself.
+- **BR-NS-9** The engine runs right after a counted No-show is created or confirmed. The student is notified once when a meal reaches the warning level, once when it is disabled, and once when an approved report brings it back. The Home warning can be dismissed at the warning threshold and stays from the next No-show on. (ADR-0027)
+- **BR-NS-10** A student may report each counted or held No-show in the window once. Approval excludes the event (`APPEAL_APPROVED`) but the meal stays a No-show in history; the auto-disable lifts if the count drops below the threshold. Rejection needs a reason the student sees. Held No-shows are confirmed (then counted) or dismissed (`OUTAGE_REVIEW_DISMISSED`) with a reason. (ADR-0027)
 
 ## BR-ATT: Attendance
 

@@ -45,31 +45,33 @@ Section 6 shows how to tell which one it is.
 
 ## 2. What exists today, and what does not yet
 
-The project is built in phases. Phases 0–8 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
+The project is built in phases. Phases 0–9 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
 
-| Area                                                                                                                | Status                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Student: register with a reference number, log in                                                                   | ✅ Works (Phase 1)                                                                                |
-| Student: first-time setup (profile, hostel, meals)                                                                  | ✅ Works (Phase 1)                                                                                |
-| Student: reset password with a code from the office                                                                 | ✅ Works (Phase 2)                                                                                |
-| Student: **slot availability** (Home → Check slot availability)                                                     | ✅ Works (Phase 3): live counts and labels; booking from it arrives in Phase 4                    |
-| Student: **Home** (meals for a date, book, change slot, meal type, cancel, countdowns, Cancel Today's Meals)        | ✅ Works (Phase 4)                                                                                |
-| Student: **Profile tab**                                                                                            | ⏳ Shows your name and Log Out. Viewing and editing your details (Spec §9) comes in a later phase |
-| Student: **Default Booking tab** (overall switch, per-meal ON/OFF, edit one meal, Change Slots for all meals)       | ✅ Works (Phase 5): saving updates your upcoming bookings at once                                 |
-| Student: **Plan Ahead** (Home → Plan Ahead: change one date, or weekday rules such as "Mon/Wed lunch at 1:00 PM")   | ✅ Works (Phase 6): a one-date change always wins over a weekday rule                             |
-| Student: **My Bookings tab** (completed, cancelled and No-show meals, filters, record details)                      | ✅ Works (Phase 7)                                                                                |
-| Student: **Leave Management** (Home → Leave Management: apply with a live summary, extend, end early, Home banner)  | ✅ Works (Phase 8)                                                                                |
-| Student: no-show warnings and appeals, complaints                                                                   | ⏳ Phases 9–10                                                                                    |
-| Admin: sign in, change password, 2FA, sessions                                                                      | ✅ Works (Phase 2)                                                                                |
-| Admin: Staff & roles, Audit log                                                                                     | ✅ Works (Phase 2)                                                                                |
-| Admin: Students, Import roster, reset codes                                                                         | ✅ Works (Phase 2)                                                                                |
-| Admin: Mess configuration, Hostels, Policy, Menus                                                                   | ✅ Works (Phase 2)                                                                                |
-| Admin: **Dashboard** (booked / expected / attended plates, slot occupancy, pending work, 7-day charts)              | ✅ Works (Phase 4)                                                                                |
-| Admin: **Bookings** (grid, book for a student, move, cancel, correct status, bulk actions)                          | ✅ Works (Phase 4)                                                                                |
-| Admin: **Closures** (close a date or meals, see how many bookings it cancels, remove a closure to restore bookings) | ✅ Works (Phase 5)                                                                                |
-| Admin: **Attendance** (live counter, search a reference number and mark present, outage mode, import a file)        | ✅ Works (Phase 7)                                                                                |
-| Admin: **Leaves** (approval queue, all leaves, add / end / correct a leave for a student)                           | ✅ Works (Phase 8)                                                                                |
-| Admin: no-shows, complaints, announcements, reports                                                                 | ⏳ Phases 9–11 (not in the sidebar yet)                                                           |
+| Area                                                                                                                                | Status                                                                                            |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Student: register with a reference number, log in                                                                                   | ✅ Works (Phase 1)                                                                                |
+| Student: first-time setup (profile, hostel, meals)                                                                                  | ✅ Works (Phase 1)                                                                                |
+| Student: reset password with a code from the office                                                                                 | ✅ Works (Phase 2)                                                                                |
+| Student: **slot availability** (Home → Check slot availability)                                                                     | ✅ Works (Phase 3): live counts and labels; booking from it arrives in Phase 4                    |
+| Student: **Home** (meals for a date, book, change slot, meal type, cancel, countdowns, Cancel Today's Meals)                        | ✅ Works (Phase 4)                                                                                |
+| Student: **Profile tab**                                                                                                            | ⏳ Shows your name and Log Out. Viewing and editing your details (Spec §9) comes in a later phase |
+| Student: **Default Booking tab** (overall switch, per-meal ON/OFF, edit one meal, Change Slots for all meals)                       | ✅ Works (Phase 5): saving updates your upcoming bookings at once                                 |
+| Student: **Plan Ahead** (Home → Plan Ahead: change one date, or weekday rules such as "Mon/Wed lunch at 1:00 PM")                   | ✅ Works (Phase 6): a one-date change always wins over a weekday rule                             |
+| Student: **My Bookings tab** (completed, cancelled and No-show meals, filters, record details)                                      | ✅ Works (Phase 7)                                                                                |
+| Student: **Leave Management** (Home → Leave Management: apply with a live summary, extend, end early, Home banner)                  | ✅ Works (Phase 8)                                                                                |
+| Student: **No-shows** (Home warning at 3, Profile counts, No-shows screen, "Report incorrect record", turn Default Booking back on) | ✅ Works (Phase 9)                                                                                |
+| Student: complaints and notifications                                                                                               | ⏳ Phase 10                                                                                       |
+| Admin: sign in, change password, 2FA, sessions                                                                                      | ✅ Works (Phase 2)                                                                                |
+| Admin: Staff & roles, Audit log                                                                                                     | ✅ Works (Phase 2)                                                                                |
+| Admin: Students, Import roster, reset codes                                                                                         | ✅ Works (Phase 2)                                                                                |
+| Admin: Mess configuration, Hostels, Policy, Menus                                                                                   | ✅ Works (Phase 2)                                                                                |
+| Admin: **Dashboard** (booked / expected / attended plates, slot occupancy, pending work, 7-day charts)                              | ✅ Works (Phase 4)                                                                                |
+| Admin: **Bookings** (grid, book for a student, move, cancel, correct status, bulk actions)                                          | ✅ Works (Phase 4)                                                                                |
+| Admin: **Closures** (close a date or meals, see how many bookings it cancels, remove a closure to restore bookings)                 | ✅ Works (Phase 5)                                                                                |
+| Admin: **Attendance** (live counter, search a reference number and mark present, outage mode, import a file)                        | ✅ Works (Phase 7)                                                                                |
+| Admin: **Leaves** (approval queue, all leaves, add / end / correct a leave for a student)                                           | ✅ Works (Phase 8)                                                                                |
+| Admin: **No-shows** (reports to review, outage review, reset a count, switch Default Booking back on)                               | ✅ Works (Phase 9)                                                                                |
+| Admin: complaints, announcements, reports                                                                                           | ⏳ Phases 10–11 (not in the sidebar yet)                                                          |
 
 ---
 
