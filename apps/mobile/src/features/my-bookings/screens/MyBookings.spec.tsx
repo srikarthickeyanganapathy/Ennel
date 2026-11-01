@@ -61,7 +61,8 @@ describe('MyBookingsScreen (Spec §7)', () => {
         expect.objectContaining({ status: 'NO_SHOW', page: 1 }),
       ),
     );
-    await fireEvent.press(screen.getAllByText('View Details ›')[0] as never);
+    // The filtered page renders after its refetch, so wait for the rows to come back.
+    await fireEvent.press((await screen.findAllByText('View Details ›'))[0] as never);
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/(student)/booking-record/[id]',
       params: { id: ID },
