@@ -170,19 +170,19 @@ export class AttendanceRepository {
       status: 'COUNTED' | 'HELD_FOR_REVIEW';
     },
     tx: TransactionClient,
-  ): Promise<void> {
-    await tx.noShowEvent.createMany({
-      data: [
-        {
-          bookingId: data.bookingId,
-          studentId: data.studentId,
-          mealDate: toDbDate(data.date),
-          mealType: data.mealType,
-          status: data.status,
-        },
-      ],
-      skipDuplicates: true,
+  ): Promise<string> {
+    // One event per booking (unique); the booking was just marked No-show in this transaction.
+    const row = await tx.noShowEvent.create({
+      data: {
+        bookingId: data.bookingId,
+        studentId: data.studentId,
+        mealDate: toDbDate(data.date),
+        mealType: data.mealType,
+        status: data.status,
+      },
+      select: { id: true },
     });
+    return row.id;
   }
 
   async outagesBetween(

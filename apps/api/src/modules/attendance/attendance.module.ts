@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { BookingsModule } from '../bookings/bookings.module';
+import { NoShowsModule } from '../no-shows/no-shows.module';
 import { DevAttendanceController } from './controllers/dev-attendance.controller';
 import { DevVerificationService } from './services/dev-verification.service';
 import { AttendanceProvider, UnconfiguredAttendanceProvider } from './provider/attendance-provider';
@@ -12,7 +13,7 @@ import { CloseAttendanceWindowService } from './services/close-attendance-window
  * attendance records, and the window-closing logic used by the worker.
  */
 @Module({
-  imports: [BookingsModule],
+  imports: [BookingsModule, NoShowsModule],
   controllers: [DevAttendanceController],
   providers: [
     DevVerificationService,

@@ -28,10 +28,12 @@ import { AdminDashboardModule } from './modules/admin/admin-dashboard/admin-dash
 import { AdminClosuresModule } from './modules/admin/admin-closures/admin-closures.module';
 import { AdminAttendanceModule } from './modules/admin/admin-attendance/admin-attendance.module';
 import { AdminLeavesModule } from './modules/admin/admin-leaves/admin-leaves.module';
+import { AdminNoShowsModule } from './modules/admin/admin-no-shows/admin-no-shows.module';
 import { IdempotencyModule } from './modules/idempotency/idempotency.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { PlanAheadModule } from './modules/plan-ahead/plan-ahead.module';
 import { LeavesModule } from './modules/leaves/leaves.module';
+import { NoShowsModule } from './modules/no-shows/no-shows.module';
 import { StudentsModule } from './modules/students/students.module';
 
 @Module({
@@ -56,9 +58,11 @@ import { StudentsModule } from './modules/students/students.module';
     AdminClosuresModule,
     AdminAttendanceModule,
     AdminLeavesModule,
+    AdminNoShowsModule,
     StudentsModule,
     PlanAheadModule,
     LeavesModule,
+    NoShowsModule,
     // Staff surface (/api/v1/admin)
     AdminCoreModule,
     AuditLogModule,

@@ -6,6 +6,7 @@ import {
   TransactionRunner,
 } from '../../../infrastructure/database/transaction-runner';
 import { BookingOutcomeService } from '../../bookings/services/booking-outcome.service';
+import { NoShowEngine } from '../../no-shows/services/no-show-engine.service';
 import { planWindowClose } from '../domain/attendance-rules';
 import { attendanceWindow, overlapsOutage } from '../domain/attendance-window';
 import { AttendanceProvider } from '../provider/attendance-provider';
@@ -24,8 +25,8 @@ const CLOSE_TIMEOUT_MS = 120_000;
 
 /**
  * BR-NS-1, BR-NS-7: finalises one closed meal window. Face verifications are pulled first, then
- * every still-Booked meal becomes Completed or a No-show (held for review after an outage). No
- * thresholds or warnings yet; those belong to the no-show engine (Phase 9).
+ * every still-Booked meal becomes Completed or a No-show (held for review after an outage). Each
+ * counted No-show goes straight to the no-show engine for warnings and the auto-disable.
  */
 @Injectable()
 export class CloseAttendanceWindowService {
@@ -34,6 +35,7 @@ export class CloseAttendanceWindowService {
     private readonly recorder: AttendanceRecorder,
     private readonly outcomes: BookingOutcomeService,
     private readonly provider: AttendanceProvider,
+    private readonly engine: NoShowEngine,
     private readonly transactions: TransactionRunner,
     private readonly clock: Clock,
   ) {}
@@ -57,7 +59,7 @@ export class CloseAttendanceWindowService {
             continue;
           }
           if (!(await this.outcomes.markNoShow(ref, tx))) continue;
-          await this.attendance.createNoShowEvent(
+          const eventId = await this.attendance.createNoShowEvent(
             {
               bookingId: booking.id,
               studentId: booking.studentId,
@@ -67,8 +69,19 @@ export class CloseAttendanceWindowService {
             },
             tx,
           );
-          if (action.noShowStatus === 'HELD_FOR_REVIEW') stats.heldForReview += 1;
-          else stats.noShows += 1;
+          if (action.noShowStatus === 'HELD_FOR_REVIEW') {
+            stats.heldForReview += 1;
+            continue;
+          }
+          stats.noShows += 1;
+          // BR-NS-4/5: warnings and the auto-disable follow each counted No-show at once.
+          await this.engine.evaluate(
+            booking.studentId,
+            meal.mealType,
+            eventId,
+            this.clock.now(),
+            tx,
+          );
         }
         return stats;
       },
