@@ -63,6 +63,26 @@ export class AdminLeavesRepository {
     return row ? toAdminRow(row) : null;
   }
 
+  /** Approved leaves touching the date range, as whole days, for the calendar. */
+  async approvedBetween(
+    first: BusinessDate,
+    last: BusinessDate,
+  ): Promise<{ studentId: string; startDate: BusinessDate; endDate: BusinessDate }[]> {
+    const rows = await this.prisma.leave.findMany({
+      where: {
+        status: 'APPROVED',
+        startDate: { lte: toDbDate(last) },
+        endDate: { gte: toDbDate(first) },
+      },
+      select: { studentId: true, startDate: true, endDate: true },
+    });
+    return rows.map((row) => ({
+      studentId: row.studentId,
+      startDate: row.startDate.toISOString().slice(0, 10),
+      endDate: row.endDate.toISOString().slice(0, 10),
+    }));
+  }
+
   async studentExists(studentId: string): Promise<boolean> {
     return (await this.prisma.student.count({ where: { id: studentId } })) === 1;
   }

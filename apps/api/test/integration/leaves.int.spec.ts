@@ -269,5 +269,20 @@ describe('leave (Spec §11, Admin §K, BR-LEAVE, ADR-0007, ADR-0026)', () => {
     expect(corrected.body).toMatchObject({ bookingsPaused: 1, bookingsResumed: 1 });
     expect(await lunchStatus(day1)).toBe('BOOKED');
     expect(await lunchStatus(day2)).toBe('PAUSED_LEAVE');
+
+    // The "students away" calendar counts the approved leave on its day only.
+    const calendar = await http()
+      .get(`/api/v1/admin/leaves/calendar?month=${day2.slice(0, 7)}`)
+      .set('Authorization', `Bearer ${warden}`)
+      .expect(200);
+    const counts = new Map(
+      calendar.body.days.map((day: { date: string; count: number }) => [day.date, day.count]),
+    );
+    expect(counts.get(day2)).toBe(1);
+    if (day1.slice(0, 7) === day2.slice(0, 7)) expect(counts.get(day1)).toBe(0);
+    await http()
+      .get('/api/v1/admin/leaves/calendar?month=2026-13')
+      .set('Authorization', `Bearer ${warden}`)
+      .expect(400);
   });
 });

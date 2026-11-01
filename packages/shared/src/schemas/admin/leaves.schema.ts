@@ -72,3 +72,14 @@ export const adminLeaveResultSchema = z.object({
   bookingsResumed: z.number().int(),
 });
 export type AdminLeaveResult = z.infer<typeof adminLeaveResultSchema>;
+
+/** `GET /admin/leaves/calendar?month=YYYY-MM`: students away per day, for planning. */
+export const leaveCalendarQuerySchema = z.object({
+  month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'Use YYYY-MM'),
+});
+export const leaveCalendarSchema = z.object({
+  month: z.string(),
+  /** Students with approved leave covering at least one meal that day. */
+  days: z.array(z.object({ date: businessDateSchema, count: z.number().int() })),
+});
+export type LeaveCalendar = z.infer<typeof leaveCalendarSchema>;

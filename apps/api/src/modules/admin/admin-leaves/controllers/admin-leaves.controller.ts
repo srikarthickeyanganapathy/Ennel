@@ -3,6 +3,8 @@ import {
   type AdminLeaveList,
   adminLeaveListQuerySchema,
   type AdminLeaveResult,
+  type LeaveCalendar,
+  leaveCalendarQuerySchema,
   approveLeaveRequestSchema,
   correctLeaveRequestSchema,
   createStaffLeaveRequestSchema,
@@ -33,6 +35,15 @@ export class AdminLeavesController {
     query: z.output<typeof adminLeaveListQuerySchema>,
   ): Promise<AdminLeaveList> {
     return this.leaves.list(query);
+  }
+
+  @Get('calendar')
+  @RequirePermissions('leaves:read')
+  calendar(
+    @Query(new ZodValidationPipe(leaveCalendarQuerySchema))
+    query: z.output<typeof leaveCalendarQuerySchema>,
+  ): Promise<LeaveCalendar> {
+    return this.leaves.calendar(query.month);
   }
 
   @Post()

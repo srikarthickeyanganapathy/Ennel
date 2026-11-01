@@ -6,6 +6,7 @@ import {
   type AdminLeaveResult,
   type CorrectLeaveRequest,
   type CreateStaffLeaveRequest,
+  type LeaveCalendar,
   ErrorCode,
   type StaffEndLeaveRequest,
   toBusinessDate,
@@ -25,6 +26,7 @@ import {
 import { LeaveTimelineService } from '../../../leaves/services/leave-timeline.service';
 import { toLeave } from '../../../leaves/services/leave-views';
 import { AuditWriter } from '../../audit-log/services/audit-writer.service';
+import { dailyLeaveCounts, monthBounds } from '../domain/leave-calendar';
 import { type AdminLeaveRow, AdminLeavesRepository } from '../repositories/admin-leaves.repository';
 
 type ListQuery = z.output<typeof adminLeaveListQuerySchema>;
@@ -45,6 +47,13 @@ export class AdminLeavesService {
     private readonly audit: AuditWriter,
     private readonly clock: Clock,
   ) {}
+
+  /** Students away per day of a month (Admin §K calendar; also what the forecast removes). */
+  async calendar(month: string): Promise<LeaveCalendar> {
+    const { first, last } = monthBounds(month);
+    const leaves = await this.leaves.approvedBetween(first, last);
+    return { month, days: dailyLeaveCounts(leaves, first, last) };
+  }
 
   async list(query: ListQuery): Promise<AdminLeaveList> {
     const today = toBusinessDate(this.clock.now());
