@@ -1,29 +1,140 @@
-import { type PermissionKey } from '@ennel/shared';
+import { type PendingWork, type PermissionKey } from '@ennel/shared';
+import {
+  Briefcase,
+  Building2,
+  CalendarCheck2,
+  CalendarX2,
+  LayoutDashboard,
+  MessageSquare,
+  Rows3,
+  ScrollText,
+  Settings,
+  Shield,
+  UserX,
+  Users,
+  Utensils,
+} from 'lucide-react';
+import { type ComponentType } from 'react';
+import announcementsIcon from '@/assets/icons/announcements.svg';
+import attendanceIcon from '@/assets/icons/attendance.svg';
+import { maskIcon } from './MaskIcon';
 
 export interface NavItem {
   label: string;
   path: string;
   /** Shown when the staff member has any of these (Admin UX: permission-aware sidebar). */
   anyOf: PermissionKey[];
+  icon: ComponentType<{ className?: string }>;
+  /** Figma sidebar groups: day-to-day work first, then setup under "Admin". */
+  section: 'main' | 'admin';
+  /** Pending-work count shown as a badge, from `GET /admin/dashboard/pending`. */
+  badge?: (pending: PendingWork) => number;
 }
 
-// Only pages that exist are listed; later phases add theirs (forecasting, reports, health).
+/*
+ * Icons follow the Figma sidebar. Where the design has an icon, the installed Lucide icon with the
+ * same shape is used; Attendance and Announcements have no exact Lucide match in this version, so
+ * the Figma files are used. Pages the design does not show (Bookings, No-shows, Closures, Hostels,
+ * Audit log) use Lucide icons in the same style. Later phases add their pages (forecasting, reports,
+ * health).
+ */
 export const NAV_ITEMS: NavItem[] = [
-  { label: 'Dashboard', path: '/', anyOf: ['dashboard:read', 'dashboard:read-today'] },
-  { label: 'Bookings', path: '/bookings', anyOf: ['bookings:read'] },
-  { label: 'Attendance', path: '/attendance', anyOf: ['attendance:read'] },
-  { label: 'Leaves', path: '/leaves', anyOf: ['leaves:read'] },
-  { label: 'No-shows', path: '/no-shows', anyOf: ['no-shows:read'] },
-  { label: 'Complaints', path: '/complaints', anyOf: ['complaints:read'] },
-  { label: 'Announcements', path: '/announcements', anyOf: ['announcements:read'] },
-  { label: 'Students', path: '/students', anyOf: ['students:read', 'roster:import'] },
-  { label: 'Menus', path: '/menus', anyOf: ['menus:read'] },
-  { label: 'Closures', path: '/closures', anyOf: ['closures:read'] },
-  { label: 'Mess configuration', path: '/mess-config', anyOf: ['mess-config:read'] },
-  { label: 'Hostels', path: '/hostels', anyOf: ['mess-config:read'] },
-  { label: 'Policy', path: '/policy', anyOf: ['policy:read'] },
-  { label: 'Staff & roles', path: '/staff', anyOf: ['staff:read', 'roles:manage'] },
-  { label: 'Audit log', path: '/audit-log', anyOf: ['audit-log:read'] },
+  {
+    label: 'Dashboard',
+    path: '/',
+    anyOf: ['dashboard:read', 'dashboard:read-today'],
+    icon: LayoutDashboard,
+    section: 'main',
+  },
+  {
+    label: 'Bookings',
+    path: '/bookings',
+    anyOf: ['bookings:read'],
+    icon: CalendarCheck2,
+    section: 'main',
+  },
+  {
+    label: 'Attendance',
+    path: '/attendance',
+    anyOf: ['attendance:read'],
+    icon: maskIcon(attendanceIcon),
+    section: 'main',
+  },
+  {
+    label: 'Leaves',
+    path: '/leaves',
+    anyOf: ['leaves:read'],
+    icon: Briefcase,
+    section: 'main',
+    badge: (pending) => pending.leaveApprovals,
+  },
+  {
+    label: 'No-shows',
+    path: '/no-shows',
+    anyOf: ['no-shows:read'],
+    icon: UserX,
+    section: 'main',
+    badge: (pending) => pending.noShowAppeals + pending.attendanceIssues,
+  },
+  {
+    label: 'Complaints',
+    path: '/complaints',
+    anyOf: ['complaints:read'],
+    icon: MessageSquare,
+    section: 'main',
+    badge: (pending) => pending.openComplaints,
+  },
+  {
+    label: 'Announcements',
+    path: '/announcements',
+    anyOf: ['announcements:read'],
+    icon: maskIcon(announcementsIcon),
+    section: 'main',
+  },
+  {
+    label: 'Students',
+    path: '/students',
+    anyOf: ['students:read', 'roster:import'],
+    icon: Users,
+    section: 'main',
+  },
+  { label: 'Menus', path: '/menus', anyOf: ['menus:read'], icon: Utensils, section: 'main' },
+  {
+    label: 'Closures',
+    path: '/closures',
+    anyOf: ['closures:read'],
+    icon: CalendarX2,
+    section: 'main',
+  },
+  {
+    label: 'Mess configuration',
+    path: '/mess-config',
+    anyOf: ['mess-config:read'],
+    icon: Rows3,
+    section: 'admin',
+  },
+  {
+    label: 'Hostels',
+    path: '/hostels',
+    anyOf: ['mess-config:read'],
+    icon: Building2,
+    section: 'admin',
+  },
+  { label: 'Policy', path: '/policy', anyOf: ['policy:read'], icon: Settings, section: 'admin' },
+  {
+    label: 'Staff & roles',
+    path: '/staff',
+    anyOf: ['staff:read', 'roles:manage'],
+    icon: Shield,
+    section: 'admin',
+  },
+  {
+    label: 'Audit log',
+    path: '/audit-log',
+    anyOf: ['audit-log:read'],
+    icon: ScrollText,
+    section: 'admin',
+  },
 ];
 
 export function getVisibleNavItems(granted: ReadonlySet<PermissionKey>): NavItem[] {

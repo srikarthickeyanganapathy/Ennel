@@ -1,8 +1,10 @@
+import { useQuery } from '@tanstack/react-query';
 import { Menu } from 'lucide-react';
 import { Dialog as DialogPrimitive } from 'radix-ui';
 import { useState } from 'react';
 import { Link, Outlet, useNavigate } from 'react-router';
 import { useAuth } from '@/features/auth/auth-context';
+import { getPendingWork } from '@/features/dashboard/api/dashboard-api';
 import { formatRoles } from '@/features/staff/constants/role-labels';
 import { Button } from '@/shared/components/ui/button';
 import {
@@ -24,10 +26,17 @@ export function AppShell() {
   const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const items = getVisibleNavItems(permissions);
+  // Badge counts refresh every two minutes; roles without the dashboard get no badges.
+  const pending = useQuery({
+    queryKey: ['dashboard', 'pending'],
+    queryFn: getPendingWork,
+    enabled: permissions.has('dashboard:read-today'),
+    refetchInterval: 120_000,
+  }).data;
 
   return (
     <div className="flex min-h-screen">
-      <Sidebar items={items} className="hidden lg:block" />
+      <Sidebar items={items} pending={pending} className="hidden lg:block" />
       <DialogPrimitive.Root open={isMenuOpen} onOpenChange={setIsMenuOpen}>
         <DialogPrimitive.Portal>
           <DialogPrimitive.Overlay className="fixed inset-0 z-40 bg-black/40 lg:hidden" />
@@ -36,7 +45,12 @@ export function AppShell() {
             <DialogPrimitive.Description className="sr-only">
               Pages you can open
             </DialogPrimitive.Description>
-            <Sidebar items={items} onNavigate={() => setIsMenuOpen(false)} className="min-h-full" />
+            <Sidebar
+              items={items}
+              pending={pending}
+              onNavigate={() => setIsMenuOpen(false)}
+              className="min-h-full"
+            />
           </DialogPrimitive.Content>
         </DialogPrimitive.Portal>
       </DialogPrimitive.Root>
