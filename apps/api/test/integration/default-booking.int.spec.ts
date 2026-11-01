@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { addBusinessDays, toBusinessDate } from '@ennel/shared';
+import { addBusinessDays, toBusinessDate, toInstant } from '@ennel/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { GenerateDefaultBookingsService } from '../../src/modules/jobs/services/generate-default-bookings.service';
@@ -65,7 +65,8 @@ describe('Default Booking (Spec §8, BR-DEF, ADR-0006)', () => {
     await seedFixtures(ctx.prisma);
     await seedRoles(ctx.prisma);
     ctx.rateLimiter.reset();
-    ctx.clock.set(new Date());
+    // Just after midnight IST, so every meal today is still open whatever time the suite runs.
+    ctx.clock.set(toInstant(toBusinessDate(new Date()), 1));
     tomorrow = addBusinessDays(toBusinessDate(ctx.clock.now()), 1);
     const slots = await ctx.prisma.mealSlot.findMany({
       where: { meal: { mealType: 'LUNCH' } },

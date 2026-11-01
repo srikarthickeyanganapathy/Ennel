@@ -39,7 +39,8 @@ describe('attendance and My Bookings (Spec §7, Admin §I, BR-ATT, BR-NS-1/7, AD
     await seedRoles(ctx.prisma);
     ctx.rateLimiter.reset();
     ctx.attendanceProvider.reset();
-    ctx.clock.set(new Date());
+    // Late evening IST, so onboarding books nothing more for today and only tomorrow is tested.
+    ctx.clock.set(toInstant(toBusinessDate(new Date()), 23 * 60));
     tomorrow = addBusinessDays(toBusinessDate(ctx.clock.now()), 1);
     const meal = await ctx.prisma.meal.findUniqueOrThrow({
       where: { mealType: 'LUNCH' },
