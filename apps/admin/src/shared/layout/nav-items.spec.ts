@@ -25,13 +25,16 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
     const labels = labelsFor(StaffRole.WARDEN);
     expect(labels).toContain('Students');
     expect(labels).toContain('Leaves');
+    expect(labels).toContain('Complaints');
+    expect(labels).not.toContain('Announcements');
     expect(labels).not.toContain('Bookings');
     expect(labels).not.toContain('Staff & roles');
   });
 
   it('shows the Super Admin everything', () => {
-    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(13);
+    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(15);
     expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('Bookings');
     expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('No-shows');
+    expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('Announcements');
   });
 });

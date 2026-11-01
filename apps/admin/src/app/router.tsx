@@ -19,6 +19,8 @@ import { ClosuresPage } from '@/features/closures/pages/ClosuresPage';
 import { AttendancePage } from '@/features/attendance/pages/AttendancePage';
 import { LeavesPage } from '@/features/leaves/pages/LeavesPage';
 import { NoShowsPage } from '@/features/no-shows/pages/NoShowsPage';
+import { ComplaintsPage } from '@/features/complaints/pages/ComplaintsPage';
+import { AnnouncementsPage } from '@/features/announcements/pages/AnnouncementsPage';
 import { RequireAuth, RequirePermission } from './route-guards';
 
 export const router = createBrowserRouter([
@@ -62,6 +64,22 @@ export const router = createBrowserRouter([
             element: (
               <RequirePermission anyOf={['no-shows:read']}>
                 <NoShowsPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'complaints',
+            element: (
+              <RequirePermission anyOf={['complaints:read']}>
+                <ComplaintsPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'announcements',
+            element: (
+              <RequirePermission anyOf={['announcements:read']}>
+                <AnnouncementsPage />
               </RequirePermission>
             ),
           },
