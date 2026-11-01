@@ -6,6 +6,8 @@ import {
   adminLeaveResultSchema,
   type CorrectLeaveRequest,
   type CreateStaffLeaveRequest,
+  type LeaveCalendar,
+  leaveCalendarSchema,
   type StaffEndLeaveRequest,
 } from '@ennel/shared';
 import { apiRequest } from '@/shared/api-client/api-client';
@@ -40,3 +42,7 @@ export const endLeave = (id: string, body: StaffEndLeaveRequest): Promise<AdminL
 
 export const correctLeave = (id: string, body: CorrectLeaveRequest): Promise<AdminLeaveResult> =>
   apiRequest(`/leaves/${id}`, { method: 'PATCH', body, schema: adminLeaveResultSchema });
+
+/** Students away per day of a `YYYY-MM` month. */
+export const getLeaveCalendar = (month: string): Promise<LeaveCalendar> =>
+  apiRequest('/leaves/calendar', { query: { month }, schema: leaveCalendarSchema });
