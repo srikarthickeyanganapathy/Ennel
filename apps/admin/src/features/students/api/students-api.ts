@@ -3,8 +3,8 @@ import {
   adminHostelSchema,
   type AdminStudentDetail,
   adminStudentDetailSchema,
-  type AdminStudentListItem,
-  adminStudentListItemSchema,
+  type AdminStudentList,
+  adminStudentListResponseSchema,
   type AdminStudentListQuery,
   type CredentialResetIssued,
   credentialResetIssuedSchema,
@@ -23,13 +23,8 @@ import { apiRequest, downloadFile } from '@/shared/api-client/api-client';
 
 export type StudentAccessAction = 'lock' | 'unlock' | 'deactivate' | 'reactivate';
 
-export const listStudents = (
-  query: AdminStudentListQuery,
-): Promise<Paginated<AdminStudentListItem>> =>
-  apiRequest('/students', {
-    query: { ...query },
-    schema: paginatedResponseSchema(adminStudentListItemSchema),
-  });
+export const listStudents = (query: AdminStudentListQuery): Promise<AdminStudentList> =>
+  apiRequest('/students', { query: { ...query }, schema: adminStudentListResponseSchema });
 
 export const getStudent = (id: string): Promise<AdminStudentDetail> =>
   apiRequest(`/students/${id}`, { schema: adminStudentDetailSchema });

@@ -23,6 +23,8 @@ const STUDENT: AdminStudentDetail = {
   isRosterActive: true,
   status: null,
   defaultBookingEnabled: null,
+  mealDefaults: null,
+  isOnLeaveToday: false,
   email: null,
   phone: null,
   parentPhone: null,
@@ -34,6 +36,7 @@ const STUDENT: AdminStudentDetail = {
   leaves: [],
   noShowCounts: { BREAKFAST: 0, LUNCH: 0, DINNER: 0 },
   noShowWindowDays: 30,
+  noShowDisableThreshold: 5,
   complaintsCount: 0,
   rosterVersion: 3,
 };
