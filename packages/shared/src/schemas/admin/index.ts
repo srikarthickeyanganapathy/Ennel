@@ -12,3 +12,5 @@ export * from './closures.schema.js';
 export * from './attendance.schema.js';
 export * from './leaves.schema.js';
 export * from './no-shows.schema.js';
+export * from './complaints.schema.js';
+export * from './announcements.schema.js';
