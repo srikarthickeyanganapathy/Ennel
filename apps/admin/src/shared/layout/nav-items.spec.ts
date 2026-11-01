@@ -30,7 +30,8 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
   });
 
   it('shows the Super Admin everything', () => {
-    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(12);
+    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(13);
     expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('Bookings');
+    expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('No-shows');
   });
 });
