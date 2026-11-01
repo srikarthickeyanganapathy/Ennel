@@ -124,6 +124,34 @@ describe('ComplaintsPage (Admin §L)', () => {
     );
   });
 
+  it('offers the next step again after a status change', async () => {
+    vi.mocked(getComplaint)
+      .mockResolvedValueOnce({ ...DETAIL, status: 'NEW', version: 1 })
+      .mockResolvedValue({ ...DETAIL, status: 'IN_REVIEW', version: 2 });
+    vi.mocked(changeComplaintStatus).mockResolvedValue({ ...COMPLAINT, status: 'IN_REVIEW' });
+    renderWithProviders(<ComplaintsPage />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Open CMP-ABC234' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save status' }));
+    await waitFor(() =>
+      expect(changeComplaintStatus).toHaveBeenLastCalledWith(COMPLAINT.id, {
+        status: 'IN_REVIEW',
+        version: 1,
+      }),
+    );
+    await screen.findByRole('option', { name: 'Rejected' });
+    fireEvent.change(screen.getByLabelText('Reply to the student'), {
+      target: { value: 'Fixed now.' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Save status' }));
+    await waitFor(() =>
+      expect(changeComplaintStatus).toHaveBeenLastCalledWith(COMPLAINT.id, {
+        status: 'RESOLVED',
+        response: 'Fixed now.',
+        version: 2,
+      }),
+    );
+  });
+
   it('adds an internal note', async () => {
     vi.mocked(addComplaintNote).mockResolvedValue({ id: 'n1' });
     renderWithProviders(<ComplaintsPage />);

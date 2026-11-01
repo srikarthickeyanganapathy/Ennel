@@ -84,7 +84,8 @@ function DetailBody({ complaint }: { complaint: AdminComplaintDetail }) {
         </div>
       ) : null}
       <PermissionGate permissions={['complaints:resolve']}>
-        <StatusForm complaint={complaint} />
+        {/* Keyed by version so the next valid status is picked again after each change. */}
+        <StatusForm key={complaint.version} complaint={complaint} />
       </PermissionGate>
       <PermissionGate permissions={['complaints:assign']}>
         <AssignForm complaint={complaint} />

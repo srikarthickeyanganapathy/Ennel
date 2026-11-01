@@ -132,6 +132,8 @@ export function assertTransition(from: ComplaintStatus, to: ComplaintStatus): vo
   if (canChangeStatus(from, to)) return;
   const message = isClosedStatus(from)
     ? 'This complaint is already closed.'
-    : 'Move the complaint to In review first.';
+    : from === to
+      ? 'This complaint already has that status.'
+      : 'Move the complaint to In review first.';
   throw new AppError(ErrorCode.VALIDATION_FAILED, message);
 }
