@@ -45,33 +45,37 @@ Section 6 shows how to tell which one it is.
 
 ## 2. What exists today, and what does not yet
 
-The project is built in phases. Phases 0–9 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
+The project is built in phases. Phases 0–10 are done. **Many screens you might expect are deliberately not built yet.** That is not a bug.
 
-| Area                                                                                                                                | Status                                                                                            |
-| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Student: register with a reference number, log in                                                                                   | ✅ Works (Phase 1)                                                                                |
-| Student: first-time setup (profile, hostel, meals)                                                                                  | ✅ Works (Phase 1)                                                                                |
-| Student: reset password with a code from the office                                                                                 | ✅ Works (Phase 2)                                                                                |
-| Student: **slot availability** (Home → Check slot availability)                                                                     | ✅ Works (Phase 3): live counts and labels; booking from it arrives in Phase 4                    |
-| Student: **Home** (meals for a date, book, change slot, meal type, cancel, countdowns, Cancel Today's Meals)                        | ✅ Works (Phase 4)                                                                                |
-| Student: **Profile tab**                                                                                                            | ⏳ Shows your name and Log Out. Viewing and editing your details (Spec §9) comes in a later phase |
-| Student: **Default Booking tab** (overall switch, per-meal ON/OFF, edit one meal, Change Slots for all meals)                       | ✅ Works (Phase 5): saving updates your upcoming bookings at once                                 |
-| Student: **Plan Ahead** (Home → Plan Ahead: change one date, or weekday rules such as "Mon/Wed lunch at 1:00 PM")                   | ✅ Works (Phase 6): a one-date change always wins over a weekday rule                             |
-| Student: **My Bookings tab** (completed, cancelled and No-show meals, filters, record details)                                      | ✅ Works (Phase 7)                                                                                |
-| Student: **Leave Management** (Home → Leave Management: apply with a live summary, extend, end early, Home banner)                  | ✅ Works (Phase 8)                                                                                |
-| Student: **No-shows** (Home warning at 3, Profile counts, No-shows screen, "Report incorrect record", turn Default Booking back on) | ✅ Works (Phase 9)                                                                                |
-| Student: complaints and notifications                                                                                               | ⏳ Phase 10                                                                                       |
-| Admin: sign in, change password, 2FA, sessions                                                                                      | ✅ Works (Phase 2)                                                                                |
-| Admin: Staff & roles, Audit log                                                                                                     | ✅ Works (Phase 2)                                                                                |
-| Admin: Students, Import roster, reset codes                                                                                         | ✅ Works (Phase 2)                                                                                |
-| Admin: Mess configuration, Hostels, Policy, Menus                                                                                   | ✅ Works (Phase 2)                                                                                |
-| Admin: **Dashboard** (booked / expected / attended plates, slot occupancy, pending work, 7-day charts)                              | ✅ Works (Phase 4)                                                                                |
-| Admin: **Bookings** (grid, book for a student, move, cancel, correct status, bulk actions)                                          | ✅ Works (Phase 4)                                                                                |
-| Admin: **Closures** (close a date or meals, see how many bookings it cancels, remove a closure to restore bookings)                 | ✅ Works (Phase 5)                                                                                |
-| Admin: **Attendance** (live counter, search a reference number and mark present, outage mode, import a file)                        | ✅ Works (Phase 7)                                                                                |
-| Admin: **Leaves** (approval queue, all leaves, add / end / correct a leave for a student)                                           | ✅ Works (Phase 8)                                                                                |
-| Admin: **No-shows** (reports to review, outage review, reset a count, switch Default Booking back on)                               | ✅ Works (Phase 9)                                                                                |
-| Admin: complaints, announcements, reports                                                                                           | ⏳ Phases 10–11 (not in the sidebar yet)                                                          |
+| Area                                                                                                                                | Status                                                                                                                               |
+| ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Student: register with a reference number, log in                                                                                   | ✅ Works (Phase 1)                                                                                                                   |
+| Student: first-time setup (profile, hostel, meals)                                                                                  | ✅ Works (Phase 1)                                                                                                                   |
+| Student: reset password with a code from the office                                                                                 | ✅ Works (Phase 2)                                                                                                                   |
+| Student: **slot availability** (Home → Check slot availability)                                                                     | ✅ Works (Phase 3): live counts and labels; booking from it arrives in Phase 4                                                       |
+| Student: **Home** (meals for a date, book, change slot, meal type, cancel, countdowns, Cancel Today's Meals)                        | ✅ Works (Phase 4)                                                                                                                   |
+| Student: **Profile tab**                                                                                                            | ⏳ Shows your name and Log Out. Viewing and editing your details (Spec §9) comes in a later phase                                    |
+| Student: **Default Booking tab** (overall switch, per-meal ON/OFF, edit one meal, Change Slots for all meals)                       | ✅ Works (Phase 5): saving updates your upcoming bookings at once                                                                    |
+| Student: **Plan Ahead** (Home → Plan Ahead: change one date, or weekday rules such as "Mon/Wed lunch at 1:00 PM")                   | ✅ Works (Phase 6): a one-date change always wins over a weekday rule                                                                |
+| Student: **My Bookings tab** (completed, cancelled and No-show meals, filters, record details)                                      | ✅ Works (Phase 7)                                                                                                                   |
+| Student: **Leave Management** (Home → Leave Management: apply with a live summary, extend, end early, Home banner)                  | ✅ Works (Phase 8)                                                                                                                   |
+| Student: **No-shows** (Home warning at 3, Profile counts, No-shows screen, "Report incorrect record", turn Default Booking back on) | ✅ Works (Phase 9)                                                                                                                   |
+| Student: **Notifications** (bell with unread count on Home, filters, open a notice, Mark as Read, Mark All as Read)                 | ✅ Works (Phase 10)                                                                                                                  |
+| Student: **Complaints tab** (My Reports, New Report with meal, category, description and up to 3 photos, reference number)          | ✅ Works (Phase 10): the web preview cannot pick photos; use a phone                                                                 |
+| Student: **push notifications** on the phone                                                                                        | ⏳ Built, but off until an Expo (EAS) project ID and `PUSH_PROVIDER=expo` are set (see "Turning on push notifications" in section 3) |
+| Admin: sign in, change password, 2FA, sessions                                                                                      | ✅ Works (Phase 2)                                                                                                                   |
+| Admin: Staff & roles, Audit log                                                                                                     | ✅ Works (Phase 2)                                                                                                                   |
+| Admin: Students, Import roster, reset codes                                                                                         | ✅ Works (Phase 2)                                                                                                                   |
+| Admin: Mess configuration, Hostels, Policy, Menus                                                                                   | ✅ Works (Phase 2)                                                                                                                   |
+| Admin: **Dashboard** (booked / expected / attended plates, slot occupancy, pending work, 7-day charts)                              | ✅ Works (Phase 4)                                                                                                                   |
+| Admin: **Bookings** (grid, book for a student, move, cancel, correct status, bulk actions)                                          | ✅ Works (Phase 4)                                                                                                                   |
+| Admin: **Closures** (close a date or meals, see how many bookings it cancels, remove a closure to restore bookings)                 | ✅ Works (Phase 5)                                                                                                                   |
+| Admin: **Attendance** (live counter, search a reference number and mark present, outage mode, import a file)                        | ✅ Works (Phase 7)                                                                                                                   |
+| Admin: **Leaves** (approval queue, all leaves, add / end / correct a leave for a student)                                           | ✅ Works (Phase 8)                                                                                                                   |
+| Admin: **No-shows** (reports to review, outage review, reset a count, switch Default Booking back on)                               | ✅ Works (Phase 9)                                                                                                                   |
+| Admin: **Complaints** (inbox, filters, photos, status and reply, assign, internal notes, quality overview)                          | ✅ Works (Phase 10)                                                                                                                  |
+| Admin: **Announcements** (compose, choose who gets it, count recipients, schedule, send now, cancel, delivery counts)               | ✅ Works (Phase 10): scheduled ones need the worker running (`pnpm dev:worker`)                                                      |
+| Admin: forecasting, reports, system health                                                                                          | ⏳ Phase 11 (not in the sidebar yet)                                                                                                 |
 
 ---
 
@@ -89,10 +93,13 @@ You need **these things running**. Use one terminal window for each `pnpm dev:*`
 | 6   | Student app       | `pnpm dev:mobile`                   | shows a QR code; the app prints `[ENNEL] API_URL = ...` when it opens         |
 | 7   | Background worker | `pnpm dev:worker`                   | prints `Worker ready; generate-default-bookings runs daily at 00:30 IST, ...` |
 
-The worker runs two jobs:
+The worker runs three jobs:
 
 - **Every night** it books the next days from everyone's Default Booking settings. Without it, bookings still appear when a student saves settings, but new days are not added each night.
 - **Every 5 minutes** it closes meal windows that have ended: each meal that is still Booked becomes **Meal Completed** (attendance found) or **No-show**. Without it, past meals stay "Booked" and never reach My Bookings.
+- **Every minute** it sends announcements whose scheduled time has come. Without it, "Send now" still works but scheduled announcements wait.
+
+**Turning on push notifications (later).** Push is off by default (`PUSH_PROVIDER=none` in `.env`), so students only see notices inside the app. To turn it on you need an Expo (EAS) project for the student app; then set `PUSH_PROVIDER=expo` (and `EXPO_ACCESS_TOKEN` if the project asks for one) in `.env` and restart the API. A push only ever says "You have a new notice"; the message itself stays in the app.
 
 **Trying "Face Verified" on your computer.** The college's face-verification system is not connected yet. While a meal is being served, you can pretend it saw a student (works only in development):
 
@@ -248,19 +255,22 @@ The app shows _"Cannot reach the ENNEL server at http://…:3000"_.
 
 ### Step 6: Common one-off problems
 
-| Symptom                                                                                        | Fix                                                                                           |
-| ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| API crashes on start with `Cannot find module '@ennel/shared'` or "does not provide an export" | `pnpm build:shared` (or keep `pnpm dev:shared` running), then restart the API                 |
-| `Port 3000 is already in use`                                                                  | an old API is still running in another window; close it                                       |
-| `Can't reach database server`                                                                  | Docker Desktop is closed; open it, then `pnpm db:up`                                          |
-| Error about a missing column or table                                                          | `pnpm db:migrate`                                                                             |
-| Admin forgot password and is locked out                                                        | `pnpm db:seed` does **not** reset it. Ask another Super Admin to reset it from Staff & roles. |
-| Everything is weird after pulling new code                                                     | `pnpm install`, `pnpm build:shared`, `pnpm db:migrate`, then restart all terminals            |
-| Phone: _"Project is incompatible with this version of Expo Go"_                                | Update Expo Go from the Play Store / App Store (the project needs SDK 58)                     |
-| Student app still shows an old error or old styling after a fix                                | stop Expo (Ctrl+C) and start it with a cleared cache: `pnpm dev:mobile --clear`               |
-| Web: _"Cannot manually set color scheme, as dark mode is type 'media'"_                        | fixed in `apps/mobile/tailwind.config.js` (`darkMode: 'class'`); restart Expo with `--clear`  |
-| Expo says _"An update for expo is available"_ or _"packages may need updating"_                | `cd apps/mobile`, then `npx expo install --check`; ask before upgrading to a new SDK number   |
-| Browser console: _"blocked by CORS policy"_                                                    | the API only accepts the admin site, plus `localhost` pages in development; see section 3     |
+| Symptom                                                                                        | Fix                                                                                                      |
+| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| API crashes on start with `Cannot find module '@ennel/shared'` or "does not provide an export" | `pnpm build:shared` (or keep `pnpm dev:shared` running), then restart the API                            |
+| `Port 3000 is already in use`                                                                  | an old API is still running in another window; close it                                                  |
+| `Can't reach database server`                                                                  | Docker Desktop is closed; open it, then `pnpm db:up`                                                     |
+| Error about a missing column or table                                                          | `pnpm db:migrate`                                                                                        |
+| Admin forgot password and is locked out                                                        | `pnpm db:seed` does **not** reset it. Ask another Super Admin to reset it from Staff & roles.            |
+| Everything is weird after pulling new code                                                     | `pnpm install`, `pnpm build:shared`, `pnpm db:migrate`, then restart all terminals                       |
+| Phone: _"Project is incompatible with this version of Expo Go"_                                | Update Expo Go from the Play Store / App Store (the project needs SDK 58)                                |
+| Student app still shows an old error or old styling after a fix                                | stop Expo (Ctrl+C) and start it with a cleared cache: `pnpm dev:mobile --clear`                          |
+| Web: _"Cannot manually set color scheme, as dark mode is type 'media'"_                        | fixed in `apps/mobile/tailwind.config.js` (`darkMode: 'class'`); restart Expo with `--clear`             |
+| Expo says _"An update for expo is available"_ or _"packages may need updating"_                | `cd apps/mobile`, then `npx expo install --check`; ask before upgrading to a new SDK number              |
+| A scheduled announcement never goes out                                                        | the worker is not running; start it with `pnpm dev:worker` (it checks every minute)                      |
+| Announcement shows "push not delivered" for everyone                                           | expected while `PUSH_PROVIDER=none` in `.env`; students still get it in the app                          |
+| A student cannot see their anonymous report after reinstalling the app or on another phone     | expected: anonymous reports are found only with the receipt saved on the phone that sent them (ADR-0008) |
+| Browser console: _"blocked by CORS policy"_                                                    | the API only accepts the admin site, plus `localhost` pages in development; see section 3                |
 
 ---
 
@@ -294,20 +304,23 @@ If an API integration test fails with only a status code (for example 500), run 
 
 ## 9. Words you will see
 
-| Word             | Meaning                                                                                      |
-| ---------------- | -------------------------------------------------------------------------------------------- |
-| API              | The server program (`apps/api`) that the apps send requests to                               |
-| Endpoint / route | One URL + method the API answers, e.g. `POST /api/v1/auth/login`                             |
-| Controller       | API file that receives a request and hands it to a service                                   |
-| Service          | API file that performs one action (a "use case")                                             |
-| Domain           | Pure rule functions, no database; easy to test                                               |
-| Repository       | The only files that read and write the database                                              |
-| Prisma           | The library the API uses to talk to PostgreSQL; `schema.prisma` lists the tables             |
-| Migration        | A saved change to the database structure (`pnpm db:migrate` applies them)                    |
-| Seed             | A script that fills the database with starting data (`pnpm db:seed`)                         |
-| Zod schema       | A description of valid data (e.g. "password at least 8 characters"), shared by app and API   |
-| Access token     | Short-lived proof that you are signed in, sent with each request                             |
-| Refresh token    | Longer-lived token used to get a new access token without signing in again                   |
-| Request ID       | A unique ID for one request; it ties an error in the app to the matching line in the API log |
-| Expo / Expo Go   | Tools to run the React Native student app on your phone during development                   |
-| Vite             | The tool that serves the admin website during development                                    |
+| Word             | Meaning                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| API              | The server program (`apps/api`) that the apps send requests to                                                                |
+| Endpoint / route | One URL + method the API answers, e.g. `POST /api/v1/auth/login`                                                              |
+| Controller       | API file that receives a request and hands it to a service                                                                    |
+| Service          | API file that performs one action (a "use case")                                                                              |
+| Domain           | Pure rule functions, no database; easy to test                                                                                |
+| Repository       | The only files that read and write the database                                                                               |
+| Prisma           | The library the API uses to talk to PostgreSQL; `schema.prisma` lists the tables                                              |
+| Migration        | A saved change to the database structure (`pnpm db:migrate` applies them)                                                     |
+| Seed             | A script that fills the database with starting data (`pnpm db:seed`)                                                          |
+| Zod schema       | A description of valid data (e.g. "password at least 8 characters"), shared by app and API                                    |
+| Access token     | Short-lived proof that you are signed in, sent with each request                                                              |
+| Refresh token    | Longer-lived token used to get a new access token without signing in again                                                    |
+| Request ID       | A unique ID for one request; it ties an error in the app to the matching line in the API log                                  |
+| Expo / Expo Go   | Tools to run the React Native student app on your phone during development                                                    |
+| Push token       | The address of one phone for push notifications; the app sends it to `PUT /push-tokens`                                       |
+| Receipt token    | A secret the phone keeps for each anonymous complaint, so it can show that report's status later                              |
+| Worker           | A second API program (`pnpm dev:worker`) that runs timed jobs: Default Booking, closing meal windows, scheduled announcements |
+| Vite             | The tool that serves the admin website during development                                                                     |

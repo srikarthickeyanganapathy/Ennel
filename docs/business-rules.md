@@ -31,7 +31,7 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 
 - **BR-MENU-1** A menu exists per date and meal, with items tagged Veg or Non-Veg, and is Draft until published. Students only see the published snapshot; later draft edits do not change it until the next publish.
 - **BR-MENU-2** Copy-from-previous-week and the bulk weekly editor only write drafts.
-- **BR-MENU-3** Publishing a menu whose items differ from the previously published snapshot, for a date with active bookings, sends an in-app "menu changed" notification to each booked student (once per published version). The first publish and an unchanged republish notify nobody. Push delivery arrives with the notifications phase.
+- **BR-MENU-3** Publishing a menu whose items differ from the previously published snapshot, for a date with active bookings, sends an in-app "menu changed" notification to each booked student (once per published version). The first publish and an unchanged republish notify nobody. Menu-change notices are in-app only for the MVP (BR-NOT-3).
 
 ## BR-STAFF: Staff accounts (Admin §A/§B)
 
@@ -160,9 +160,24 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 ## BR-CMP: Complaints (Rule 12, Spec §12)
 
 - **BR-CMP-1** Visible only to the submitter and staff with `complaints:read`. Internal notes are never returned by the student API.
-- **BR-CMP-2** `complaintPrivacyMode` (_policy_, default **`PRIVATE_IDENTIFIED`**, ADR-0008). Under `ANONYMOUS`, no student ID or hostel is stored. The submitter can see status through a device-held receipt token but gets no push or in-app status notifications. The mode is snapshotted per complaint.
-- **BR-CMP-3** Photos: JPEG/PNG/HEIC/WebP, max 5 MB each, max 3 per complaint, type checked by content, not extension.
-- **BR-CMP-4** Status flow: `NEW → IN_REVIEW → RESOLVED | REJECTED`. Each change is recorded in history and notifies an identified submitter.
+- **BR-CMP-2** `complaintPrivacyMode` (_policy_, default **`PRIVATE_IDENTIFIED`**, ADR-0008). Under `ANONYMOUS`, no student ID or hostel is stored. The submitter can see status through a device-held receipt token (stored hashed on the server) but gets no push or in-app status notifications. The mode is snapshotted per complaint. Staff see the submitter only when the report was identified and the mess is still in identified mode. (ADR-0028)
+- **BR-CMP-3** Photos: JPEG/PNG/HEIC/WebP, max 5 MB each, max 3 per complaint, type checked by content, not extension. Location, camera and text metadata are removed from JPEG, PNG and WebP before storage (HEIC is stored as sent). Staff view photos through short-lived signed links. (ADR-0028)
+- **BR-CMP-4** Status flow: `NEW → IN_REVIEW → RESOLVED | REJECTED`, with no skipping, going back or reopening. Resolving or rejecting needs a reply the student sees. Each change is recorded in history and notifies an identified submitter.
+- **BR-CMP-5** Each report gets a reference code `CMP-XXXXXX` shown on submit. A meal and date are optional but go together; the description is 10–2000 characters. A retried submit with the same Idempotency-Key returns the first result.
+- **BR-CMP-6** Staff with `complaints:assign` can assign a report to anyone holding `complaints:resolve`. Internal notes (`complaints:note`) are staff-only. Status, assignment and notes are audited; edits are version-checked (BR-ADM-2).
+
+## BR-NOT: Notifications (Spec §13)
+
+- **BR-NOT-1** Every notice is stored in the notification centre with a category (announcement, booking, reminder, warning, leave, complaint, menu, No-show) and an optional related item that the row's action button opens. A dedupe key stops the same event notifying twice.
+- **BR-NOT-2** Opening a notice or "Mark as Read" marks it read; "Mark All as Read" marks every notice read. The bell shows the unread count.
+- **BR-NOT-3** A push never shows the notice's content on the lock screen; it only says there is a new notice. Pushes are sent after the change is saved; failed pushes never undo the in-app notice. For the MVP only announcements with the Push channel are pushed. (ADR-0028)
+
+## BR-ANN: Announcements (Admin §M)
+
+- **BR-ANN-1** An announcement has a title, message, category, audience (all students, hostels, blocks, academic years, or a custom list of reference numbers) and channels. In-app is always included; push is optional.
+- **BR-ANN-2** States: Draft → Scheduled → Sent (Sending while pushes are in progress), or Cancelled. Drafts and scheduled announcements can be edited or cancelled; sent ones cannot. A schedule must be at least one minute ahead (IST).
+- **BR-ANN-3** The audience is resolved when it is sent, from students who are not deactivated. Each recipient gets one in-app notice; delivery is counted per channel (in-app delivered, push sent, push not delivered).
+- **BR-ANN-4** An announcement is sent exactly once, whether by "Send now" or by the scheduled job, which runs every minute. Every staff action and every send is audited.
 
 ## BR-AUTH: Authentication (Rule 11, Admin §B)
 

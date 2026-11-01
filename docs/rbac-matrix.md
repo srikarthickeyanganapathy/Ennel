@@ -105,4 +105,11 @@ Account safety rules on top of permissions: staff cannot disable themselves or r
 - API: `@AdminController` applies the staff JWT guard and a fail-closed permissions guard to every admin route. Each route declares `@RequirePermissions(...keys)` (all listed keys required), `@AuthenticatedStaffOnly()` or `@PublicAdminRoute()`; a route with none of them is refused. `admin-authorization.int.spec.ts` enumerates every admin route and checks the declaration, 401 without a token or with a student token, and 403 for a role without the key. Permissions are re-read from the database (cached 30 s, cleared on role changes), so a role change takes effect without a new login.
 - Student tokens are rejected on `/api/v1/admin/*` (different audience and secret), and staff tokens on student routes.
 - Admin UI: `<PermissionGate>` and the permission-aware sidebar are a convenience only.
-- Data scoping beyond permissions: `dashboard:read-today` limits the date to today (IST); `ANONYMOUS` complaints never return identity regardless of permission.
+- Data scoping beyond permissions: `dashboard:read-today` limits the date to today (IST); `ANONYMOUS` complaints never return identity regardless of permission, and while the mess is in anonymous mode no complaint returns identity (ADR-0028).
+
+## Phase 10 notes (complaints and announcements)
+
+- `GET /admin/complaints/assignees` needs `complaints:assign` and lists active staff holding `complaints:resolve`; only they can be assigned.
+- Viewing a complaint's photos needs only `complaints:read`: the detail returns signed links that expire after 15 minutes.
+- `POST /admin/announcements/audience-preview` needs `announcements:manage`, because it is part of composing.
+- Wardens can read, reply to and note complaints but not assign them (still marked **?** above) and have no announcement access.
