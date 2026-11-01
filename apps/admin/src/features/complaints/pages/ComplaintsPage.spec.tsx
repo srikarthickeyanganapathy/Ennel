@@ -6,6 +6,7 @@ import { renderWithProviders } from '@/test-utils/render';
 import {
   addComplaintNote,
   changeComplaintStatus,
+  closeWithReply,
   getComplaint,
   getComplaintAnalytics,
   listAssignees,
@@ -25,6 +26,7 @@ vi.mock('../api/complaints-api', () => ({
   listComplaints: vi.fn(),
   getComplaint: vi.fn(),
   changeComplaintStatus: vi.fn(),
+  closeWithReply: vi.fn(),
   assignComplaint: vi.fn(),
   addComplaintNote: vi.fn(),
   listAssignees: vi.fn(),
@@ -40,7 +42,7 @@ const COMPLAINT: AdminComplaint = {
   mealType: 'LUNCH',
   mealDate: '2099-05-22',
   description: 'There was a stone in the rice.',
-  status: 'IN_REVIEW',
+  status: 'NEW',
   response: null,
   privacyMode: 'PRIVATE_IDENTIFIED',
   submitter: {
@@ -62,7 +64,7 @@ const DETAIL: AdminComplaintDetail = {
     {
       id: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
       body: 'Asked the kitchen.',
-      authorName: 'Manager',
+      authorName: 'Kitchen Supervisor',
       createdAt: '2099-05-22T10:00:00.000Z',
     },
   ],
@@ -82,97 +84,113 @@ beforeEach(() => {
     total: 4,
     byCategory: [{ category: 'FOOD_QUALITY', count: 3 }],
     byMeal: [{ mealType: 'LUNCH', count: 4 }],
-    byStatus: [{ status: 'NEW', count: 4 }],
+    byStatus: [
+      { status: 'NEW', count: 2 },
+      { status: 'RESOLVED', count: 2 },
+    ],
     averageResolutionHours: 5.5,
   });
 });
 
-describe('ComplaintsPage (Admin §L)', () => {
-  it('lists complaints with text statuses and shows the analytics', async () => {
+describe('ComplaintsPage (Admin §L, Figma "Admin — Complaints")', () => {
+  it('shows the KPI row, status chips with counts, and opens the first report beside the list', async () => {
     renderWithProviders(<ComplaintsPage />);
-    expect(await screen.findByText('CMP-ABC234')).toBeInTheDocument();
-    expect(screen.getAllByText('In review').length).toBeGreaterThan(0);
-    expect(screen.getByText('Asha Rao (24900002)')).toBeInTheDocument();
-    expect(await screen.findByText('5.5 hours')).toBeInTheDocument();
-  });
 
-  it('opens the detail with photos and notes, and resolves with a reply', async () => {
-    vi.mocked(changeComplaintStatus).mockResolvedValue({ ...COMPLAINT, status: 'RESOLVED' });
-    renderWithProviders(<ComplaintsPage />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open CMP-ABC234' }));
-
-    expect(await screen.findByAltText('Photo 1 of 1')).toHaveAttribute(
-      'src',
-      '/api/v1/files/x.jpg?sig=1',
+    expect(await screen.findByText('Top: Food quality (3)')).toBeInTheDocument();
+    expect(screen.getByText('5.5 h')).toBeInTheDocument();
+    expect(screen.getByText('Most about Lunch (4)')).toBeInTheDocument();
+    expect(await screen.findByRole('radio', { name: 'New · 1' })).toHaveAttribute(
+      'aria-checked',
+      'true',
     );
+    expect(listComplaints).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'NEW', page: 1 }),
+    );
+
+    expect(
+      await screen.findByRole('button', { name: 'CMP-ABC234: Foreign object, New' }),
+    ).toHaveAttribute('aria-current', 'true');
+    expect(await screen.findByText('From Asha Rao · 24900002 · Block A')).toBeInTheDocument();
+    expect(screen.getByAltText('Photo 1 of 1')).toHaveAttribute('src', '/api/v1/files/x.jpg?sig=1');
     expect(screen.getByText('Asked the kitchen.')).toBeInTheDocument();
+    expect(screen.getByText('KS')).toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save status' }));
-    expect(await screen.findByText('Write a reply for the student')).toBeInTheDocument();
-    expect(changeComplaintStatus).not.toHaveBeenCalled();
-
-    fireEvent.change(screen.getByLabelText('Reply to the student'), {
-      target: { value: 'We have spoken to the kitchen team.' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save status' }));
+  it('filters by status when a chip is chosen', async () => {
+    renderWithProviders(<ComplaintsPage />);
+    fireEvent.click(await screen.findByRole('radio', { name: /^Resolved/ }));
     await waitFor(() =>
-      expect(changeComplaintStatus).toHaveBeenCalledWith(COMPLAINT.id, {
-        status: 'RESOLVED',
-        response: 'We have spoken to the kitchen team.',
-        version: 2,
-      }),
+      expect(listComplaints).toHaveBeenLastCalledWith(
+        expect.objectContaining({ status: 'RESOLVED', pageSize: 20 }),
+      ),
     );
   });
 
-  it('offers the next step again after a status change', async () => {
-    vi.mocked(getComplaint)
-      .mockResolvedValueOnce({ ...DETAIL, status: 'NEW', version: 1 })
-      .mockResolvedValue({ ...DETAIL, status: 'IN_REVIEW', version: 2 });
+  it('starts the review from the status chips', async () => {
     vi.mocked(changeComplaintStatus).mockResolvedValue({ ...COMPLAINT, status: 'IN_REVIEW' });
     renderWithProviders(<ComplaintsPage />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open CMP-ABC234' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Save status' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'In review' }));
     await waitFor(() =>
-      expect(changeComplaintStatus).toHaveBeenLastCalledWith(COMPLAINT.id, {
+      expect(changeComplaintStatus).toHaveBeenCalledWith(COMPLAINT.id, {
         status: 'IN_REVIEW',
-        version: 1,
-      }),
-    );
-    await screen.findByRole('option', { name: 'Rejected' });
-    fireEvent.change(screen.getByLabelText('Reply to the student'), {
-      target: { value: 'Fixed now.' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Save status' }));
-    await waitFor(() =>
-      expect(changeComplaintStatus).toHaveBeenLastCalledWith(COMPLAINT.id, {
-        status: 'RESOLVED',
-        response: 'Fixed now.',
         version: 2,
       }),
+    );
+  });
+
+  it('needs a reply before resolving, then sends it', async () => {
+    vi.mocked(closeWithReply).mockResolvedValue({ ...COMPLAINT, status: 'RESOLVED' });
+    renderWithProviders(<ComplaintsPage />);
+    const resolve = await screen.findByRole('button', { name: 'Reply & resolve' });
+    expect(resolve).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText('Reply to student'), {
+      target: { value: 'We have spoken to the kitchen team.' },
+    });
+    expect(screen.getByText('35 / 2000')).toBeInTheDocument();
+    fireEvent.click(resolve);
+    await waitFor(() =>
+      expect(closeWithReply).toHaveBeenCalledWith(
+        expect.objectContaining({ id: COMPLAINT.id, status: 'NEW', version: 2 }),
+        'RESOLVED',
+        'We have spoken to the kitchen team.',
+      ),
     );
   });
 
   it('adds an internal note', async () => {
     vi.mocked(addComplaintNote).mockResolvedValue({ id: 'n1' });
     renderWithProviders(<ComplaintsPage />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open CMP-ABC234' }));
-    fireEvent.change(await screen.findByLabelText('Add a note'), {
+    fireEvent.click(await screen.findByRole('button', { name: 'Add internal note' }));
+    fireEvent.change(screen.getByLabelText('New internal note'), {
       target: { value: 'Warmer replaced.' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Add note' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
     await waitFor(() =>
       expect(addComplaintNote).toHaveBeenCalledWith(COMPLAINT.id, 'Warmer replaced.'),
     );
   });
 
-  it('says when the submitter is anonymous', async () => {
-    vi.mocked(listComplaints).mockResolvedValue({
-      items: [{ ...COMPLAINT, submitter: null, privacyMode: 'ANONYMOUS' }],
-      total: 1,
-      page: 1,
-      pageSize: 20,
+  it('shows a closed report with its reply and no reply box', async () => {
+    vi.mocked(getComplaint).mockResolvedValue({
+      ...DETAIL,
+      status: 'RESOLVED',
+      response: 'The warmer is fixed.',
     });
     renderWithProviders(<ComplaintsPage />);
-    expect(await screen.findByText('Anonymous')).toBeInTheDocument();
+    expect(await screen.findByText('Reply sent to the student')).toBeInTheDocument();
+    expect(screen.getByText('The warmer is fixed.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Reply to student')).not.toBeInTheDocument();
+  });
+
+  it('says when the student identity is hidden', async () => {
+    vi.mocked(getComplaint).mockResolvedValue({
+      ...DETAIL,
+      submitter: null,
+      privacyMode: 'ANONYMOUS',
+    });
+    renderWithProviders(<ComplaintsPage />);
+    expect(await screen.findByText('Student identity hidden')).toBeInTheDocument();
+    expect(screen.getByText('Sent anonymously')).toBeInTheDocument();
   });
 });

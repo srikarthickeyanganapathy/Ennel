@@ -27,6 +27,22 @@ export const changeComplaintStatus = (
 ): Promise<AdminComplaint> =>
   apiRequest(`/complaints/${id}/status`, { method: 'POST', body, schema: adminComplaintSchema });
 
+/**
+ * "Reply & resolve" / "Reject with reply". BR-CMP-4 has no shortcut from New to closed, so a new
+ * report is moved to In review first; both steps are recorded and the student hears about each.
+ */
+export async function closeWithReply(
+  complaint: Pick<AdminComplaint, 'id' | 'status' | 'version'>,
+  status: 'RESOLVED' | 'REJECTED',
+  response: string,
+): Promise<AdminComplaint> {
+  let version = complaint.version;
+  if (complaint.status === 'NEW') {
+    version = (await changeComplaintStatus(complaint.id, { status: 'IN_REVIEW', version })).version;
+  }
+  return changeComplaintStatus(complaint.id, { status, response, version });
+}
+
 export const assignComplaint = (
   id: string,
   staffId: string | null,
