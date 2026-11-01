@@ -269,7 +269,7 @@ function FilterBar({
   );
 }
 
-/** A native select dressed as the Figma "Hostel: All" chip. */
+/** The Figma "Hostel: All" chip: the shared Select in its chip variant. */
 function ChipSelect({
   label,
   value,
@@ -282,20 +282,16 @@ function ChipSelect({
   children: React.ReactNode;
 }) {
   return (
-    <select
+    <Select
+      variant="chip"
+      isActive={Boolean(value)}
       aria-label={label}
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className={cn(
-        'min-h-11 cursor-pointer rounded-full border-[1.5px] px-3.5 text-sm',
-        value
-          ? 'border-primary bg-mint font-semibold text-primary'
-          : 'border-border bg-background text-foreground',
-      )}
     >
       <option value="">{label}: All</option>
       {children}
-    </select>
+    </Select>
   );
 }
 

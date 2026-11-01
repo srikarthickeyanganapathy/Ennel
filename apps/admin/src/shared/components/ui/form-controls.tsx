@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/shared/lib/utils';
 
 const FIELD =
@@ -14,9 +15,51 @@ export function Textarea({ className, ...props }: React.ComponentProps<'textarea
   );
 }
 
-/** Native select: keyboard- and screen-reader-friendly with no extra dependency. */
-export function Select({ className, ...props }: React.ComponentProps<'select'>) {
-  return <select data-slot="select" className={cn(FIELD, 'pr-8', className)} {...props} />;
+interface SelectProps extends React.ComponentProps<'select'> {
+  /** `field` for forms and toolbars; `chip` for the Figma filter chips ("Hostel: All"). */
+  variant?: 'field' | 'chip';
+  /** Chip only: shows the chosen state (mint fill, green border). */
+  isActive?: boolean;
+}
+
+const SELECT_VARIANTS = {
+  field: 'rounded-md border border-input bg-background shadow-xs',
+  chip: 'min-h-11 rounded-full border-[1.5px] border-border bg-background',
+} as const;
+
+/**
+ * The one dropdown for every page. A native select keeps keyboard and screen-reader support with
+ * no extra dependency; the browser arrow is hidden and replaced by our chevron, so the text never
+ * runs under it. `className` sizes the control (width, height); the select fills it.
+ */
+export function Select({ className, variant = 'field', isActive = false, ...props }: SelectProps) {
+  return (
+    <span
+      className={cn(
+        'relative inline-flex h-9 w-full shrink-0',
+        variant === 'chip' && 'h-11 w-auto',
+        className,
+      )}
+    >
+      <select
+        data-slot="select"
+        className={cn(
+          'h-full w-full min-w-0 cursor-pointer appearance-none truncate pl-3 pr-9 text-sm text-foreground outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-60 aria-invalid:border-destructive',
+          SELECT_VARIANTS[variant],
+          variant === 'chip' && 'pl-3.5',
+          isActive && 'border-primary bg-mint font-semibold text-primary',
+        )}
+        {...props}
+      />
+      <ChevronDown
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute right-3 top-1/2 size-4 -translate-y-1/2',
+          isActive ? 'text-primary' : 'text-muted-foreground',
+        )}
+      />
+    </span>
+  );
 }
 
 export function Label({ className, ...props }: React.ComponentProps<'label'>) {

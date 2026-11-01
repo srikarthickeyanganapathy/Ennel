@@ -207,7 +207,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
           <label className="flex items-center gap-2">
             Rows
             <Select
-              className="h-8 w-20"
+              className="h-8 w-[5.5rem]"
               value={state.pageSize}
               onChange={(event) => props.onPageSizeChange(Number(event.target.value))}
             >
