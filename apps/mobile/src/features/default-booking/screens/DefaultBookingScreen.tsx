@@ -13,6 +13,10 @@ import { Screen } from '@/shared/components/Screen';
 import { ToggleRow } from '@/shared/components/ToggleRow';
 import { useSubmitLock } from '@/shared/hooks/use-submit-lock';
 import { confirmAction } from '@/shared/utils/confirm-action';
+import {
+  useNoShowSummary,
+  useReEnableDefaultBooking,
+} from '@/features/no-shows/hooks/use-no-shows';
 import { DefaultMealCard } from '../components/DefaultMealCard';
 import {
   useDefaultPreferences,
@@ -48,9 +52,11 @@ function DefaultBookingContent({ preferences }: { preferences: DefaultPreference
   const saveAll = useSaveDefaultPreferences();
   const updateMeal = useUpdateMealPreference();
   const runOnce = useSubmitLock();
+  const noShows = useNoShowSummary();
+  const reEnable = useReEnableDefaultBooking();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [isInfoOpen, setIsInfoOpen] = useState(false);
-  const isSaving = saveAll.isPending || updateMeal.isPending;
+  const isSaving = saveAll.isPending || updateMeal.isPending || reEnable.isPending;
 
   // Every save ends with the Spec §8.3 summary of what changed, or the reason it failed.
   const saveAndReport = async (save: () => Promise<SaveDefaultPreferencesResponse>) => {
@@ -89,6 +95,20 @@ function DefaultBookingContent({ preferences }: { preferences: DefaultPreference
 
   const onMealToggle = (mealType: MealType, isEnabled: boolean) =>
     runOnce(() => saveAndReport(() => updateMeal.mutateAsync({ mealType, body: { isEnabled } })));
+
+  const onReEnable = (mealType: MealType, mealName: string) =>
+    runOnce(async () => {
+      setNotice(null);
+      try {
+        await reEnable.mutateAsync(mealType);
+        setNotice({ tone: 'success', message: `Default Booking is back on for ${mealName}.` });
+      } catch (error) {
+        setNotice({
+          tone: 'error',
+          message: error instanceof Error ? error.message : 'Could not switch it back on.',
+        });
+      }
+    });
 
   return (
     <Screen
@@ -140,6 +160,11 @@ function DefaultBookingContent({ preferences }: { preferences: DefaultPreference
           isPaused={!preferences.defaultBookingEnabled}
           isSaving={isSaving}
           onToggle={(isEnabled) => onMealToggle(meal.mealType, isEnabled)}
+          onReEnable={
+            noShows.data?.meals.find((item) => item.mealType === meal.mealType)?.canReEnable
+              ? () => onReEnable(meal.mealType, meal.mealName)
+              : undefined
+          }
           onOpen={() =>
             router.push({
               pathname: '/(student)/default-meal/[meal]',

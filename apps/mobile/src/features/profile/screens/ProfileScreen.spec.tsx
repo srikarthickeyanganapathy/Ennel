@@ -8,6 +8,7 @@ import { renderWithProviders } from '@/test-utils/render';
 import { ProfileScreen } from './ProfileScreen';
 
 jest.mock('@/features/auth/api/auth-api');
+jest.mock('@/features/no-shows/api/no-shows-api');
 
 /** Answers the next confirmation dialog by pressing the button with this label. */
 function answerDialogWith(label: string): void {

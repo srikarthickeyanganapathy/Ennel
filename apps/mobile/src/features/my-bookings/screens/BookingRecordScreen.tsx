@@ -1,11 +1,14 @@
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
 import { type BookingRecord, formatMinuteOfDay } from '@ennel/shared';
+import { AppButton } from '@/shared/components/AppButton';
 import { MessageBanner } from '@/shared/components/MessageBanner';
 import { QueryState } from '@/shared/components/QueryState';
 import { Screen } from '@/shared/components/Screen';
 import { formatBusinessDate, formatClockTime, formatDateTime } from '@/shared/utils/format-date';
 import { DIET_LABELS } from '@/features/bookings/constants/booking-labels';
+import { useNoShowSummary } from '@/features/no-shows/hooks/use-no-shows';
+import { eventStatusText } from '@/features/no-shows/utils/no-show-text';
 import { HISTORY_STATUS_DISPLAY, SOURCE_TEXT } from '../constants/history-display';
 import { useBookingRecord } from '../hooks/use-booking-history';
 
@@ -100,10 +103,29 @@ function OutcomeNote({ record }: { record: BookingRecord }) {
   return (
     <View>
       <MessageBanner tone="error" message="The meal window ended without recorded attendance." />
-      <Text className="text-sm text-muted-foreground">
-        If you did eat this meal, reporting an incorrect record will be available here soon. Until
-        then, please tell the mess office.
-      </Text>
+      <ReportLink bookingId={record.id} />
+    </View>
+  );
+}
+
+/** Spec §7 "a way to report a possible attendance-system error". */
+function ReportLink({ bookingId }: { bookingId: string }) {
+  const router = useRouter();
+  const summary = useNoShowSummary();
+  const event = summary.data?.events.find((item) => item.bookingId === bookingId);
+  if (!event) return null;
+  return (
+    <View>
+      <Text className="mb-3 text-sm text-muted-foreground">{eventStatusText(event)}</Text>
+      {event.canAppeal ? (
+        <AppButton
+          label="Report incorrect record"
+          variant="secondary"
+          onPress={() =>
+            router.push({ pathname: '/(student)/no-shows/report/[id]', params: { id: event.id } })
+          }
+        />
+      ) : null}
     </View>
   );
 }

@@ -17,6 +17,7 @@ import { useMyProfile } from '@/features/onboarding/hooks/use-onboarding-queries
 import { useDay } from '@/features/bookings/hooks/use-bookings';
 import { useLeaves } from '@/features/leave/hooks/use-leaves';
 import { describeRange } from '@/features/leave/utils/leave-text';
+import { NoShowWarnings } from '@/features/no-shows/components/NoShowWarnings';
 import { DayMeals } from '../components/DayMeals';
 
 /** Spec §4 Home: the student's meals for a date within the booking period. */
@@ -54,6 +55,7 @@ function HomeContent({
           .join(' • ')}
       />
       <LeaveBanner />
+      <NoShowWarnings />
       <DateSwitcher day={day} tomorrow={tomorrow} onDateChange={onDateChange} />
       <DayMeals key={day.date} day={day} />
       <View className="mb-6 gap-3">

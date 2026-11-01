@@ -7,6 +7,7 @@ import { BookingRecordScreen } from './BookingRecordScreen';
 import { MyBookingsScreen } from './MyBookingsScreen';
 
 jest.mock('../api/booking-history-api');
+jest.mock('@/features/no-shows/api/no-shows-api');
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const item = (overrides: Partial<BookingHistoryItem>): BookingHistoryItem => ({

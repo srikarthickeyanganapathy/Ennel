@@ -10,6 +10,8 @@ interface DefaultMealCardProps {
   isSaving: boolean;
   onToggle: (isEnabled: boolean) => void;
   onOpen: () => void;
+  /** Present when the student may switch a No-show auto-disable off again (BR-NS-6). */
+  onReEnable?: () => void;
 }
 
 /** A "Current Default Slots" card (Spec §8.2): opens only this meal's settings. */
@@ -19,6 +21,7 @@ export function DefaultMealCard({
   isSaving,
   onToggle,
   onOpen,
+  onReEnable,
 }: DefaultMealCardProps) {
   const status = meal.nextDateStatus ? STATUS_DISPLAY[meal.nextDateStatus] : null;
   const diet = meal.dietType === 'VEG' ? 'Veg' : 'Non-Veg';
@@ -65,11 +68,27 @@ export function DefaultMealCard({
         <Text className="text-base font-semibold text-primary">Edit ›</Text>
       </Pressable>
       {meal.isAutoDisabled ? (
-        <Text className="mt-2 text-xs text-warning">
-          Paused after repeated No-shows. You can still book this meal yourself, and your slot and
-          meal type are kept. Mess staff turn it back on, or it returns if your No-show appeal is
-          approved.
-        </Text>
+        <View className="mt-2">
+          <Text className="text-xs text-warning">
+            Turned off after repeated No-shows. You can still book this meal yourself, and your slot
+            and meal type are kept.
+            {onReEnable
+              ? ''
+              : ' It can be switched back on once your No-shows for this meal are below the limit, or by the mess office.'}
+          </Text>
+          {onReEnable ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onReEnable}
+              disabled={isSaving}
+              className="mt-1 py-1"
+            >
+              <Text className="text-sm font-semibold text-primary">
+                Turn Default Booking back on
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       ) : null}
     </View>
   );

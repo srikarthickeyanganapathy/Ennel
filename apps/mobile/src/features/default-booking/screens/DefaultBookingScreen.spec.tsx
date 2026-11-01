@@ -12,6 +12,7 @@ import { DefaultBookingScreen } from './DefaultBookingScreen';
 
 jest.mock('../api/default-booking-api');
 jest.mock('@/shared/utils/confirm-action');
+jest.mock('@/features/no-shows/api/no-shows-api');
 
 const EARLY = '11111111-1111-4111-8111-111111111111';
 const LATE = '22222222-2222-4222-8222-222222222222';
@@ -57,7 +58,7 @@ describe('DefaultBookingScreen (Spec §8)', () => {
 
     expect(await screen.findAllByText('12:00 PM - 12:30 PM · Veg')).toHaveLength(3);
     expect(screen.getByText('Filling Fast')).toBeTruthy();
-    expect(screen.getByText(/Paused after repeated No-shows/)).toBeTruthy();
+    expect(screen.getByText(/Turned off after repeated No-shows/)).toBeTruthy();
     expect(screen.getByText(/the meal is not booked automatically/)).toBeTruthy();
   });
 

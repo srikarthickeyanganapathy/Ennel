@@ -9,6 +9,7 @@ import { HomeScreen } from './HomeScreen';
 jest.mock('@/features/bookings/api/bookings-api');
 jest.mock('@/features/onboarding/api/onboarding-api');
 jest.mock('@/features/leave/api/leave-api');
+jest.mock('@/features/no-shows/api/no-shows-api');
 jest.mock('@/shared/utils/confirm-action');
 
 const TODAY = toBusinessDate(new Date());
