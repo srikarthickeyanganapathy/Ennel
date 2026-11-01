@@ -1,3 +1,4 @@
+import { Utensils } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { cn } from '@/shared/lib/utils';
 import { type NavItem } from './nav-items';
@@ -18,9 +19,9 @@ export function Sidebar({ items, onNavigate, className }: SidebarProps) {
       <div className="mb-4 flex items-center gap-2.5 pl-2">
         <span
           aria-hidden
-          className="flex size-8 items-center justify-center rounded-sm bg-primary text-sm font-bold text-primary-foreground"
+          className="flex size-8 items-center justify-center rounded-sm bg-primary text-primary-foreground"
         >
-          E
+          <Utensils className="size-[18px]" />
         </span>
         <span className="leading-tight">
           <span className="block text-lg font-bold text-primary">ENNEL</span>
