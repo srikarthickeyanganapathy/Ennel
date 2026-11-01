@@ -1,12 +1,11 @@
 import { Body, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
 import {
   type AdminStudentDetail,
-  type AdminStudentListItem,
+  type AdminStudentList,
   adminStudentListQuerySchema,
   bulkHostelRequestSchema,
   type CredentialResetIssued,
   credentialResetRequestSchema,
-  type Paginated,
   reasonRequestSchema,
   updateAdminStudentRequestSchema,
 } from '@ennel/shared';
@@ -46,7 +45,7 @@ export class AdminStudentsController {
   list(
     @Query(new ZodValidationPipe(adminStudentListQuerySchema))
     query: z.output<typeof adminStudentListQuerySchema>,
-  ): Promise<Paginated<AdminStudentListItem>> {
+  ): Promise<AdminStudentList> {
     const { page, pageSize, sortBy: _sortBy, sortOrder: _sortOrder, ...filter } = query;
     return this.listStudents.list(filter, page, pageSize);
   }

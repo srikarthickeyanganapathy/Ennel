@@ -7,6 +7,7 @@ import {
   type Paginated,
 } from '@ennel/shared';
 import { type Prisma, type StudentStatus } from '../../../../generated/prisma/client';
+import { type MealDefaultState, mealDefaultStates } from '../domain/meal-default-state';
 import { PrismaService } from '../../../../infrastructure/database/prisma.service';
 import { type TransactionClient } from '../../../../infrastructure/database/transaction-runner';
 
@@ -19,7 +20,24 @@ export interface AdminStudentFilter {
   registration?: 'REGISTERED' | 'UNREGISTERED';
   status?: StudentStatus;
   defaultBooking?: 'ON' | 'OFF';
+  atNoShowWarning?: boolean;
+  onLeave?: boolean;
 }
+
+/** Dates and policy numbers the No-show and leave columns are computed against. */
+export interface ListContext {
+  noShowSince: Date;
+  today: Date;
+  warningThreshold: number;
+}
+
+interface ListExtras {
+  mealDefaults: Record<MealType, MealDefaultState> | null;
+  noShowCounts: Record<MealType, number> | null;
+  isOnLeaveToday: boolean;
+}
+
+const NO_EXTRAS: ListExtras = { mealDefaults: null, noShowCounts: null, isOnLeaveToday: false };
 
 export interface RosterChanges {
   fullName?: string;
@@ -56,7 +74,7 @@ const LIST_INCLUDE = {
 type ListRow = Prisma.CollegeRosterEntryGetPayload<{ include: typeof LIST_INCLUDE }>;
 
 /** Registered students show their own (possibly edited) hostel details; others show the roster's. */
-function toListItem(row: ListRow): AdminStudentListItem {
+function toListItem(row: ListRow, extras: ListExtras = NO_EXTRAS): AdminStudentListItem {
   const block = row.student ? row.student.hostelBlock : row.hostelBlock;
   return {
     rosterEntryId: row.id,
@@ -73,6 +91,7 @@ function toListItem(row: ListRow): AdminStudentListItem {
     isRosterActive: row.isActive,
     status: row.student?.status ?? null,
     defaultBookingEnabled: row.student?.defaultBookingEnabled ?? null,
+    ...extras,
   };
 }
 
@@ -88,7 +107,11 @@ function hostelCondition(
   return { OR: [{ student: { is: block } }, { student: { is: null }, ...block }] };
 }
 
-function toWhere(filter: AdminStudentFilter): Prisma.CollegeRosterEntryWhereInput {
+function toWhere(
+  filter: AdminStudentFilter,
+  context: ListContext,
+  warnedStudentIds: string[] | null,
+): Prisma.CollegeRosterEntryWhereInput {
   const student: Prisma.StudentWhereInput = {
     status: filter.status,
     defaultBookingEnabled: filter.defaultBooking ? filter.defaultBooking === 'ON' : undefined,
@@ -100,6 +123,8 @@ function toWhere(filter: AdminStudentFilter): Prisma.CollegeRosterEntryWhereInpu
     AND: [
       hostelCondition(filter) ?? {},
       filter.registration === 'UNREGISTERED' ? { student: { is: null } } : {},
+      warnedStudentIds ? { student: { is: { id: { in: warnedStudentIds } } } } : {},
+      filter.onLeave ? { student: { is: { leaves: { some: coveringToday(context) } } } } : {},
       needsStudent ? { student: { is: student } } : {},
       filter.q
         ? {
@@ -115,16 +140,21 @@ function toWhere(filter: AdminStudentFilter): Prisma.CollegeRosterEntryWhereInpu
   };
 }
 
+function coveringToday(context: ListContext): Prisma.LeaveWhereInput {
+  return { status: 'APPROVED', startDate: { lte: context.today }, endDate: { gte: context.today } };
+}
+
 export abstract class AdminStudentsRepository {
   abstract list(
     filter: AdminStudentFilter,
+    context: ListContext,
     page: number,
     pageSize: number,
   ): Promise<Paginated<AdminStudentListItem>>;
   abstract findDetail(
     rosterEntryId: string,
-    noShowSince: Date,
-  ): Promise<Omit<AdminStudentDetail, 'noShowWindowDays'> | null>;
+    context: ListContext,
+  ): Promise<Omit<AdminStudentDetail, 'noShowWindowDays' | 'noShowDisableThreshold'> | null>;
   abstract findTarget(rosterEntryId: string, tx?: TransactionClient): Promise<RosterTarget | null>;
   abstract updateRoster(
     target: RosterTarget,
@@ -158,10 +188,12 @@ export class PrismaAdminStudentsRepository extends AdminStudentsRepository {
 
   async list(
     filter: AdminStudentFilter,
+    context: ListContext,
     page: number,
     pageSize: number,
   ): Promise<Paginated<AdminStudentListItem>> {
-    const where = toWhere(filter);
+    const warned = filter.atNoShowWarning ? await this.warnedStudentIds(context) : null;
+    const where = toWhere(filter, context, warned);
     const [rows, total] = await Promise.all([
       this.prisma.collegeRosterEntry.findMany({
         where,
@@ -172,32 +204,101 @@ export class PrismaAdminStudentsRepository extends AdminStudentsRepository {
       }),
       this.prisma.collegeRosterEntry.count({ where }),
     ]);
-    return { items: rows.map(toListItem), total, page, pageSize };
+    const extras = await this.listExtras(rows, context);
+    const items = rows.map((row) =>
+      toListItem(row, (row.student && extras.get(row.student.id)) || NO_EXTRAS),
+    );
+    return { items, total, page, pageSize };
+  }
+
+  /** BR-NS-4: students with any meal at or above the warning threshold in the window. */
+  private async warnedStudentIds(context: ListContext): Promise<string[]> {
+    const groups = await this.prisma.noShowEvent.groupBy({
+      by: ['studentId', 'mealType'],
+      where: { status: 'COUNTED', mealDate: { gte: context.noShowSince } },
+      having: { studentId: { _count: { gte: context.warningThreshold } } },
+    });
+    return [...new Set(groups.map((group) => group.studentId))];
+  }
+
+  /** The per-meal and leave columns for one page of rows, in three batched queries. */
+  private async listExtras(
+    rows: ListRow[],
+    context: ListContext,
+  ): Promise<Map<string, ListExtras>> {
+    const students = rows.flatMap((row) => (row.student ? [row.student] : []));
+    const ids = students.map((student) => student.id);
+    if (ids.length === 0) return new Map();
+    const [preferences, groups, leaves] = await Promise.all([
+      this.prisma.mealPreference.findMany({
+        where: { studentId: { in: ids } },
+        select: {
+          studentId: true,
+          isEnabled: true,
+          autoDisabledAt: true,
+          meal: { select: { mealType: true } },
+        },
+      }),
+      this.prisma.noShowEvent.groupBy({
+        by: ['studentId', 'mealType'],
+        where: {
+          studentId: { in: ids },
+          status: 'COUNTED',
+          mealDate: { gte: context.noShowSince },
+        },
+        _count: { _all: true },
+      }),
+      this.prisma.leave.findMany({
+        where: { studentId: { in: ids }, ...coveringToday(context) },
+        select: { studentId: true },
+      }),
+    ]);
+    const onLeave = new Set(leaves.map((leave) => leave.studentId));
+    const extras = new Map<string, ListExtras>();
+    for (const student of students) {
+      const counts = emptyCounts();
+      for (const group of groups) {
+        if (group.studentId === student.id) counts[group.mealType] = group._count._all;
+      }
+      const flags = preferences
+        .filter((preference) => preference.studentId === student.id)
+        .map((preference) => ({
+          mealType: preference.meal.mealType,
+          isEnabled: preference.isEnabled,
+          isAutoDisabled: preference.autoDisabledAt !== null,
+        }));
+      extras.set(student.id, {
+        mealDefaults: mealDefaultStates(student.defaultBookingEnabled, flags),
+        noShowCounts: counts,
+        isOnLeaveToday: onLeave.has(student.id),
+      });
+    }
+    return extras;
   }
 
   async findDetail(
     rosterEntryId: string,
-    noShowSince: Date,
-  ): Promise<Omit<AdminStudentDetail, 'noShowWindowDays'> | null> {
+    context: ListContext,
+  ): Promise<Omit<AdminStudentDetail, 'noShowWindowDays' | 'noShowDisableThreshold'> | null> {
     const row = await this.prisma.collegeRosterEntry.findUnique({
       where: { id: rosterEntryId },
       include: LIST_INCLUDE,
     });
     if (!row) return null;
-    const base = toListItem(row);
+    const extras = (await this.listExtras([row], context)).get(row.student?.id ?? '') ?? NO_EXTRAS;
+    const base = toListItem(row, extras);
     const studentId = row.student?.id;
     const student = studentId
       ? await this.prisma.student.findUnique({ where: { id: studentId } })
       : null;
-    const [preferences, recentBookings, leaves, noShowCounts, complaintsCount] = studentId
+    const [preferences, recentBookings, leaves, complaintsCount] = studentId
       ? await Promise.all([
           this.preferences(studentId),
           this.recentBookings(studentId),
           this.leaves(studentId),
-          this.noShowCounts(studentId, noShowSince),
           this.prisma.complaint.count({ where: { studentId } }),
         ])
-      : [[], [], [], emptyCounts(), 0];
+      : [[], [], [], 0];
     return {
       ...base,
       email: student?.email ?? row.email,
@@ -209,7 +310,7 @@ export class PrismaAdminStudentsRepository extends AdminStudentsRepository {
       preferences,
       recentBookings,
       leaves,
-      noShowCounts,
+      noShowCounts: extras.noShowCounts ?? emptyCounts(),
       complaintsCount,
       rosterVersion: row.version,
     };
@@ -260,17 +361,6 @@ export class PrismaAdminStudentsRepository extends AdminStudentsRepository {
       endMealType: row.endMealType,
       status: row.status,
     }));
-  }
-
-  private async noShowCounts(studentId: string, since: Date): Promise<Record<MealType, number>> {
-    const groups = await this.prisma.noShowEvent.groupBy({
-      by: ['mealType'],
-      where: { studentId, status: 'COUNTED', mealDate: { gte: since } },
-      _count: { _all: true },
-    });
-    const counts = emptyCounts();
-    for (const group of groups) counts[group.mealType] = group._count._all;
-    return counts;
   }
 
   async findTarget(

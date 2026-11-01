@@ -1,3 +1,4 @@
+import { addBusinessDays, toBusinessDate } from '@ennel/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { resetDatabase, seedFixtures } from './helpers/database';
@@ -146,6 +147,104 @@ describe('roster import and student management (Admin §G)', () => {
     expect(search.body.items).toHaveLength(1);
   });
 
+  it('shows No-show counts, Default Booking per meal and leave, and filters by them', async () => {
+    for (const referenceNumber of ['24900001', '24900002']) {
+      await http()
+        .post('/api/v1/auth/register')
+        .send({ referenceNumber, password: PASSWORD, confirmPassword: PASSWORD })
+        .expect(201);
+    }
+    const [first, second] = await Promise.all(
+      ['24900001', '24900002'].map((referenceNumber) =>
+        ctx.prisma.student.findFirstOrThrow({ where: { rosterEntry: { referenceNumber } } }),
+      ),
+    );
+    if (!first || !second) throw new Error('fixture');
+    const today = toBusinessDate(ctx.clock.now());
+    const slot = await ctx.prisma.mealSlot.findFirstOrThrow({
+      where: { meal: { mealType: 'LUNCH' } },
+    });
+    // Three counted lunch No-shows reach the default warning threshold (BR-NS-4).
+    for (const daysAgo of [1, 2, 3]) {
+      const mealDate = new Date(`${addBusinessDays(today, -daysAgo)}T00:00:00Z`);
+      const booking = await ctx.prisma.booking.create({
+        data: {
+          studentId: first.id,
+          mealDate,
+          mealId: slot.mealId,
+          slotId: slot.id,
+          dietType: 'VEG',
+          source: 'DEFAULT',
+          status: 'NO_SHOW',
+          lastActorType: 'SYSTEM',
+        },
+      });
+      await ctx.prisma.noShowEvent.create({
+        data: {
+          bookingId: booking.id,
+          studentId: first.id,
+          mealDate,
+          mealType: 'LUNCH',
+          status: 'COUNTED',
+        },
+      });
+    }
+    await ctx.prisma.student.update({
+      where: { id: first.id },
+      data: { defaultBookingEnabled: true },
+    });
+    await ctx.prisma.mealPreference.create({
+      data: {
+        studentId: first.id,
+        mealId: slot.mealId,
+        slotId: slot.id,
+        isEnabled: true,
+        dietType: 'VEG',
+      },
+    });
+    await ctx.prisma.leave.create({
+      data: {
+        studentId: second.id,
+        startDate: new Date(`${today}T00:00:00Z`),
+        startMealType: 'BREAKFAST',
+        endDate: new Date(`${addBusinessDays(today, 2)}T00:00:00Z`),
+        endMealType: 'DINNER',
+        status: 'APPROVED',
+      },
+    });
+
+    const all = await asAdmin('get', '/api/v1/admin/students?registration=REGISTERED').expect(200);
+    expect(all.body).toMatchObject({
+      noShowWindowDays: 30,
+      noShowWarningThreshold: 3,
+      noShowDisableThreshold: 5,
+    });
+    const row = all.body.items.find(
+      (item: { referenceNumber: string }) => item.referenceNumber === '24900001',
+    );
+    expect(row).toMatchObject({
+      noShowCounts: { BREAKFAST: 0, LUNCH: 3, DINNER: 0 },
+      mealDefaults: { BREAKFAST: 'OFF', LUNCH: 'ON', DINNER: 'OFF' },
+      isOnLeaveToday: false,
+    });
+
+    const warned = await asAdmin('get', '/api/v1/admin/students?atNoShowWarning=true').expect(200);
+    expect(
+      warned.body.items.map((item: { referenceNumber: string }) => item.referenceNumber),
+    ).toEqual(['24900001']);
+    const onLeave = await asAdmin('get', '/api/v1/admin/students?onLeave=true').expect(200);
+    expect(onLeave.body.items).toHaveLength(1);
+    expect(onLeave.body.items[0]).toMatchObject({
+      referenceNumber: '24900002',
+      isOnLeaveToday: true,
+    });
+
+    const detail = await asAdmin('get', `/api/v1/admin/students/${first.rosterEntryId}`).expect(
+      200,
+    );
+    expect(detail.body).toMatchObject({ noShowDisableThreshold: 5, noShowCounts: { LUNCH: 3 } });
+  });
+
   it('locks a student with a reason, ending their session, and unlocks again', async () => {
     const session = (
       await http()
@@ -227,14 +326,12 @@ describe('roster import and student management (Admin §G)', () => {
     expect(JSON.stringify(audit)).not.toContain(issued.body.code);
 
     const newPassword = 'another-password-2';
-    const wrong = await http()
-      .post('/api/v1/auth/reset-with-code')
-      .send({
-        referenceNumber: '24900001',
-        code: 'AAAAAAAAAA',
-        password: newPassword,
-        confirmPassword: newPassword,
-      });
+    const wrong = await http().post('/api/v1/auth/reset-with-code').send({
+      referenceNumber: '24900001',
+      code: 'AAAAAAAAAA',
+      password: newPassword,
+      confirmPassword: newPassword,
+    });
     expect(wrong.status).toBe(401);
     await http()
       .post('/api/v1/auth/reset-with-code')
@@ -249,14 +346,12 @@ describe('roster import and student management (Admin §G)', () => {
       .post('/api/v1/auth/login')
       .send({ referenceNumber: '24900001', password: newPassword })
       .expect(200);
-    const reuse = await http()
-      .post('/api/v1/auth/reset-with-code')
-      .send({
-        referenceNumber: '24900001',
-        code: issued.body.code,
-        password: newPassword,
-        confirmPassword: newPassword,
-      });
+    const reuse = await http().post('/api/v1/auth/reset-with-code').send({
+      referenceNumber: '24900001',
+      code: issued.body.code,
+      password: newPassword,
+      confirmPassword: newPassword,
+    });
     expect(reuse.status).toBe(401);
   });
 });

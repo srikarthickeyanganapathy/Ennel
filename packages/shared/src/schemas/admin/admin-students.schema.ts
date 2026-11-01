@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { registerRequestSchema } from '../auth.schema.js';
-import { overrideReasonSchema, paginationQuerySchema, uuidSchema } from '../common.schema.js';
+import {
+  overrideReasonSchema,
+  paginatedResponseSchema,
+  paginationQuerySchema,
+  uuidSchema,
+} from '../common.schema.js';
 import { dietTypeSchema, mealTypeSchema } from '../meal-config.schema.js';
 import { profileFieldSchemas } from '../profile.schema.js';
 
@@ -15,6 +20,16 @@ export const adminStudentListQuerySchema = paginationQuerySchema.extend({
   registration: z.enum(['REGISTERED', 'UNREGISTERED']).optional(),
   status: z.enum(STUDENT_STATUSES).optional(),
   defaultBooking: z.enum(['ON', 'OFF']).optional(),
+  /** Students with any meal at or above the policy warning threshold (BR-NS-4). */
+  atNoShowWarning: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
+  /** Students with an approved leave covering today. */
+  onLeave: z
+    .enum(['true', 'false'])
+    .optional()
+    .transform((value) => value === 'true'),
 });
 export type AdminStudentListQuery = z.input<typeof adminStudentListQuerySchema>;
 
@@ -34,8 +49,26 @@ export const adminStudentListItemSchema = z.object({
   isRosterActive: z.boolean(),
   status: z.enum(STUDENT_STATUSES).nullable(),
   defaultBookingEnabled: z.boolean().nullable(),
+  /** Per meal: on, off by the student, or turned off by No-shows (BR-NS-5). Null until registered. */
+  mealDefaults: z.record(mealTypeSchema, z.enum(['ON', 'OFF', 'AUTO_OFF'])).nullable(),
+  /** Counted No-shows per meal in the rolling window (BR-NS-3). Null until registered. */
+  noShowCounts: z.record(mealTypeSchema, z.number().int()).nullable(),
+  /** An approved leave covers today (whole days; the leave page has meal-level detail). */
+  isOnLeaveToday: z.boolean(),
 });
 export type AdminStudentListItem = z.infer<typeof adminStudentListItemSchema>;
+
+/** The policy numbers the No-show columns are read against. */
+const noShowPolicySchema = z.object({
+  noShowWindowDays: z.number().int(),
+  noShowWarningThreshold: z.number().int(),
+  noShowDisableThreshold: z.number().int(),
+});
+
+export const adminStudentListResponseSchema = paginatedResponseSchema(
+  adminStudentListItemSchema,
+).extend(noShowPolicySchema.shape);
+export type AdminStudentList = z.infer<typeof adminStudentListResponseSchema>;
 
 export const adminStudentDetailSchema = adminStudentListItemSchema.extend({
   email: z.string().nullable(),
@@ -75,6 +108,7 @@ export const adminStudentDetailSchema = adminStudentListItemSchema.extend({
   ),
   noShowCounts: z.record(mealTypeSchema, z.number().int()),
   noShowWindowDays: z.number().int(),
+  noShowDisableThreshold: z.number().int(),
   complaintsCount: z.number().int(),
   rosterVersion: z.number().int(),
 });
