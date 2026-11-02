@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { addBusinessDays, toBusinessDate } from '@ennel/shared';
+import { addBusinessDays, toBusinessDate, toInstant } from '@ennel/shared';
 import request from 'supertest';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { resetDatabase, seedFixtures } from './helpers/database';
@@ -50,7 +50,9 @@ describe('leave (Spec §11, Admin §K, BR-LEAVE, ADR-0007, ADR-0026)', () => {
     await seedFixtures(ctx.prisma);
     await seedRoles(ctx.prisma);
     ctx.rateLimiter.reset();
-    ctx.clock.set(new Date());
+    // Midday: late at night the next meal is tomorrow's breakfast, so a leave starting there is
+    // already current and these tests would pass or fail by the hour they run.
+    ctx.clock.set(toInstant(toBusinessDate(new Date()), 12 * 60));
     const today = toBusinessDate(ctx.clock.now());
     [day1, day2, day3] = [1, 2, 3].map((offset) => addBusinessDays(today, offset)) as [
       string,
