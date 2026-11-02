@@ -1,19 +1,35 @@
 import {
   type AdminStudentDetail,
+  type BookingSource,
+  type BookingStatus,
   type CredentialResetIssued,
   MEAL_TYPE_ORDER,
 } from '@ennel/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import { useParams } from 'react-router';
 import { toast } from 'sonner';
+import {
+  BOOKING_SOURCE_LABELS,
+  BOOKING_STATUS_DISPLAY,
+} from '@/features/bookings/constants/booking-display';
+import { usePermissions } from '@/features/auth/auth-context';
+import { DietTag } from '@/features/menus/components/DietTag';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { EmptyState, QueryBoundary } from '@/shared/components/QueryStates';
 import { ReasonDialog } from '@/shared/components/ReasonDialog';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { StatusBadge, type StatusTone } from '@/shared/components/StatusBadge';
+import { TABLE_CELL, TABLE_HEAD } from '@/shared/components/table-styles';
 import { Button } from '@/shared/components/ui/button';
 import { Card, CardHeader } from '@/shared/components/ui/card';
 import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/shared/components/ui/dropdown-menu';
 import { PageHeader } from '@/shared/layout/PageHeader';
 import { formatBusinessDate, formatDateTime } from '@/shared/lib/format';
 import {
@@ -31,6 +47,12 @@ type PendingAction =
   | { kind: 'reset'; resetKind: 'PASSWORD' | 'REGISTRATION' };
 
 const MEAL_NAMES = { BREAKFAST: 'Breakfast', LUNCH: 'Lunch', DINNER: 'Dinner' } as const;
+const LEAVE_STATUS: Record<string, { label: string; tone: StatusTone }> = {
+  PENDING: { label: 'Pending approval', tone: 'warning' },
+  APPROVED: { label: 'Approved', tone: 'success' },
+  REJECTED: { label: 'Rejected', tone: 'danger' },
+  CANCELLED: { label: 'Cancelled', tone: 'neutral' },
+};
 const ACCESS_TITLES: Record<StudentAccessAction, string> = {
   lock: 'Lock this account?',
   unlock: 'Unlock this account?',
@@ -157,45 +179,59 @@ function StudentActions({
   onEdit: () => void;
   onAction: (action: PendingAction) => void;
 }) {
+  const can = usePermissions();
   const isDeactivated = !student.isRosterActive || student.status === 'DEACTIVATED';
+  const canReset = student.isRegistered && can('students:reset-credentials');
+  const canLock = student.isRegistered && !isDeactivated && can('students:lock');
   return (
     <>
       <PermissionGate permissions={['students:update']}>
-        <Button variant="outline" onClick={onEdit}>
+        <Button className="h-11 font-semibold" onClick={onEdit}>
           Edit college details
         </Button>
       </PermissionGate>
-      {student.isRegistered ? (
-        <PermissionGate permissions={['students:reset-credentials']}>
-          <Button
-            variant="outline"
-            onClick={() => onAction({ kind: 'reset', resetKind: 'PASSWORD' })}
-          >
-            Password reset code
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => onAction({ kind: 'reset', resetKind: 'REGISTRATION' })}
-          >
-            Registration reset code
-          </Button>
-        </PermissionGate>
-      ) : null}
-      {student.isRegistered && !isDeactivated ? (
-        <PermissionGate permissions={['students:lock']}>
-          <Button
-            variant="outline"
-            onClick={() =>
-              onAction({ kind: 'access', action: student.status === 'LOCKED' ? 'unlock' : 'lock' })
-            }
-          >
-            {student.status === 'LOCKED' ? 'Unlock' : 'Lock'}
-          </Button>
-        </PermissionGate>
+      {canReset || canLock ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" className="h-11">
+              Account actions
+              <ChevronDown aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            {canReset ? (
+              <>
+                <DropdownMenuItem
+                  onSelect={() => onAction({ kind: 'reset', resetKind: 'PASSWORD' })}
+                >
+                  Password reset code
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => onAction({ kind: 'reset', resetKind: 'REGISTRATION' })}
+                >
+                  Registration reset code
+                </DropdownMenuItem>
+              </>
+            ) : null}
+            {canLock ? (
+              <DropdownMenuItem
+                onSelect={() =>
+                  onAction({
+                    kind: 'access',
+                    action: student.status === 'LOCKED' ? 'unlock' : 'lock',
+                  })
+                }
+              >
+                {student.status === 'LOCKED' ? 'Unlock' : 'Lock'}
+              </DropdownMenuItem>
+            ) : null}
+          </DropdownMenuContent>
+        </DropdownMenu>
       ) : null}
       <PermissionGate permissions={['students:deactivate']}>
         <Button
-          variant={isDeactivated ? 'default' : 'destructive'}
+          variant={isDeactivated ? 'outline' : 'dangerOutline'}
+          className="h-11"
           onClick={() =>
             onAction({ kind: 'access', action: isDeactivated ? 'reactivate' : 'deactivate' })
           }
@@ -210,119 +246,159 @@ function StudentActions({
 function StudentSections({ student }: { student: AdminStudentDetail }) {
   const status = describeStudentStatus(student);
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <Card>
-        <CardHeader
-          title="Profile"
-          actions={<StatusBadge label={status.label} tone={status.tone} />}
-        />
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-          <Detail label="Department" value={student.department} />
-          <Detail label="Year" value={String(student.academicYear)} />
-          <Detail
-            label="Hostel"
-            value={student.blockName ? `${student.hostelName} • ${student.blockName}` : '—'}
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 lg:grid-cols-2">
+      <div className="flex min-w-0 flex-col gap-6">
+        <Card>
+          <CardHeader
+            title="Profile"
+            actions={<StatusBadge label={status.label} tone={status.tone} />}
           />
-          <Detail label="Room" value={student.roomNumber ?? '—'} />
-          <Detail label="Email" value={student.email ?? '—'} />
-          <Detail label="Phone" value={student.phone ?? '—'} />
-          <Detail label="Parent's phone" value={student.parentPhone ?? '—'} />
-          <Detail label="Registered" value={formatDateTime(student.registeredAt)} />
-          <Detail label="Setup completed" value={formatDateTime(student.onboardingCompletedAt)} />
-        </dl>
-      </Card>
-      <Card>
-        <CardHeader
-          title="Default Booking"
-          description={
-            student.defaultBookingEnabled === null
-              ? undefined
-              : `Overall switch: ${student.defaultBookingEnabled ? 'ON' : 'OFF'}`
-          }
-        />
-        {student.preferences.length === 0 ? (
-          <EmptyState title="No preferences yet" />
-        ) : (
-          <ul className="space-y-2 text-sm">
-            {student.preferences.map((preference) => (
-              <li
-                key={preference.mealType}
-                className="flex flex-wrap items-center justify-between gap-2"
-              >
-                <span className="font-medium">{MEAL_NAMES[preference.mealType]}</span>
-                <span className="flex items-center gap-2">
-                  {preference.isEnabled
-                    ? `ON • ${preference.slotLabel ?? ''} • ${preference.dietType === 'VEG' ? 'Veg' : 'Non-Veg'}`
-                    : 'OFF'}
-                  {preference.isAutoDisabled ? (
-                    <StatusBadge label="Disabled by No-shows" tone="warning" />
-                  ) : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-      <Card>
-        <CardHeader
-          title="No-shows"
-          description={`Last ${student.noShowWindowDays} days, counted per meal`}
-        />
-        <ul className="grid grid-cols-3 gap-3 text-center">
-          {MEAL_TYPE_ORDER.map((mealType) => (
-            <li key={mealType} className="rounded-md bg-surface p-3">
-              <p className="text-2xl font-semibold">{student.noShowCounts[mealType] ?? 0}</p>
-              <p className="text-xs text-muted-foreground">{MEAL_NAMES[mealType]}</p>
-            </li>
-          ))}
-        </ul>
-        <p className="mt-3 text-sm text-muted-foreground">
-          Complaints submitted: {student.complaintsCount}
-        </p>
-      </Card>
-      <Card>
-        <CardHeader title="Leaves" />
-        {student.leaves.length === 0 ? (
-          <EmptyState title="No leaves" />
-        ) : (
-          <ul className="space-y-1 text-sm">
-            {student.leaves.map((leave) => (
-              <li key={leave.id}>
-                {formatBusinessDate(leave.startDate)} {MEAL_NAMES[leave.startMealType]} →{' '}
-                {formatBusinessDate(leave.endDate)} {MEAL_NAMES[leave.endMealType]} · {leave.status}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
-      <Card className="lg:col-span-2">
-        <CardHeader title="Recent bookings" />
-        {student.recentBookings.length === 0 ? (
-          <EmptyState title="No bookings yet" />
-        ) : (
-          <table className="w-full text-sm">
-            <caption className="sr-only">Recent bookings</caption>
-            <thead>
-              <tr className="text-left text-muted-foreground">
-                <th className="py-1">Date</th>
-                <th>Meal</th>
-                <th>Slot</th>
-                <th>Status</th>
-                <th>Source</th>
-              </tr>
-            </thead>
-            <tbody>
-              {student.recentBookings.map((booking) => (
-                <tr key={booking.id} className="border-t border-border">
-                  <td className="py-1">{formatBusinessDate(booking.mealDate)}</td>
-                  <td>{MEAL_NAMES[booking.mealType]}</td>
-                  <td>{booking.slotLabel}</td>
-                  <td>{booking.status}</td>
-                  <td>{booking.source}</td>
-                </tr>
+          <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-[13px]">
+            <Detail label="Department" value={student.department} />
+            <Detail label="Year" value={String(student.academicYear)} />
+            <Detail
+              label="Hostel"
+              value={student.blockName ? `${student.hostelName} · ${student.blockName}` : '—'}
+            />
+            <Detail label="Room" value={student.roomNumber ?? '—'} />
+            <Detail label="Email" value={student.email ?? '—'} />
+            <Detail label="Phone" value={student.phone ?? '—'} />
+            <Detail label="Parent's phone" value={student.parentPhone ?? '—'} />
+            <Detail label="Registered" value={formatDateTime(student.registeredAt)} />
+            <Detail label="Setup completed" value={formatDateTime(student.onboardingCompletedAt)} />
+          </dl>
+        </Card>
+        <Card>
+          <CardHeader title="Leaves" />
+          {student.leaves.length === 0 ? (
+            <EmptyState title="No leaves" />
+          ) : (
+            <ul className="divide-y divide-border">
+              {student.leaves.map((leave) => (
+                <li
+                  key={leave.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[13px] first:pt-0 last:pb-0"
+                >
+                  <span>
+                    {formatBusinessDate(leave.startDate, 'EEE d MMM')}{' '}
+                    {MEAL_NAMES[leave.startMealType]} →{' '}
+                    {formatBusinessDate(leave.endDate, 'EEE d MMM')} {MEAL_NAMES[leave.endMealType]}
+                  </span>
+                  <StatusBadge
+                    {...(LEAVE_STATUS[leave.status] ?? { label: leave.status, tone: 'neutral' })}
+                  />
+                </li>
               ))}
-            </tbody>
-          </table>
+            </ul>
+          )}
+        </Card>
+      </div>
+      <div className="flex min-w-0 flex-col gap-6">
+        <Card>
+          <CardHeader
+            title="Default Booking"
+            description={
+              student.defaultBookingEnabled === null
+                ? undefined
+                : `Overall switch: ${student.defaultBookingEnabled ? 'On' : 'Off'}`
+            }
+          />
+          {student.preferences.length === 0 ? (
+            <EmptyState title="No preferences yet" />
+          ) : (
+            <ul className="divide-y divide-border">
+              {student.preferences.map((preference) => (
+                <li
+                  key={preference.mealType}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2.5 first:pt-0 last:pb-0"
+                >
+                  <span className="text-[13px] font-semibold">
+                    {MEAL_NAMES[preference.mealType]}
+                  </span>
+                  <span className="flex flex-wrap items-center gap-2 text-[13px]">
+                    {preference.isEnabled ? (
+                      <>
+                        {preference.slotLabel ?? ''}
+                        <DietTag diet={preference.dietType} />
+                      </>
+                    ) : (
+                      <span className="text-muted-foreground">Off</span>
+                    )}
+                    {preference.isAutoDisabled ? (
+                      <StatusBadge label="Disabled by No-shows" tone="warning" />
+                    ) : null}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+        <Card>
+          <CardHeader
+            title="No-shows"
+            description={`Last ${student.noShowWindowDays} days, counted per meal`}
+          />
+          <ul className="grid grid-cols-3 gap-3 text-center">
+            {MEAL_TYPE_ORDER.map((mealType) => (
+              <li key={mealType} className="rounded-md bg-surface p-3">
+                <p className="text-2xl font-semibold">{student.noShowCounts[mealType] ?? 0}</p>
+                <p className="text-xs text-muted-foreground">{MEAL_NAMES[mealType]}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 text-[13px] text-muted-foreground">
+            Complaints submitted: {student.complaintsCount}
+          </p>
+        </Card>
+      </div>
+      <Card className="p-0 lg:col-span-2">
+        <h2 className="px-5 pt-5 pb-3 text-base font-semibold">Recent bookings</h2>
+        {student.recentBookings.length === 0 ? (
+          <div className="px-5 pb-5">
+            <EmptyState title="No bookings yet" />
+          </div>
+        ) : (
+          <div className="relative overflow-x-auto">
+            <table className="w-full min-w-[560px]">
+              <caption className="sr-only">Recent bookings</caption>
+              <thead className="bg-neutral-surface">
+                <tr>
+                  <th scope="col" className={TABLE_HEAD}>
+                    Date
+                  </th>
+                  <th scope="col" className={TABLE_HEAD}>
+                    Meal
+                  </th>
+                  <th scope="col" className={TABLE_HEAD}>
+                    Slot
+                  </th>
+                  <th scope="col" className={TABLE_HEAD}>
+                    Status
+                  </th>
+                  <th scope="col" className={TABLE_HEAD}>
+                    Source
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {student.recentBookings.map((booking) => (
+                  <tr key={booking.id} className="border-t border-border">
+                    <td className={`${TABLE_CELL} font-semibold whitespace-nowrap`}>
+                      {formatBusinessDate(booking.mealDate, 'EEE d MMM')}
+                    </td>
+                    <td className={TABLE_CELL}>{MEAL_NAMES[booking.mealType]}</td>
+                    <td className={TABLE_CELL}>{booking.slotLabel}</td>
+                    <td className={TABLE_CELL}>
+                      <StatusBadge {...BOOKING_STATUS_DISPLAY[booking.status as BookingStatus]} />
+                    </td>
+                    <td className={TABLE_CELL}>
+                      {BOOKING_SOURCE_LABELS[booking.source as BookingSource] ?? booking.source}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </Card>
     </div>
@@ -333,7 +409,7 @@ function Detail({ label, value }: { label: string; value: string }) {
   return (
     <>
       <dt className="text-muted-foreground">{label}</dt>
-      <dd>{value}</dd>
+      <dd className="break-words font-medium">{value}</dd>
     </>
   );
 }

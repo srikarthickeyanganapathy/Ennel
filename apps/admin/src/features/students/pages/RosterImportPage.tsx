@@ -9,6 +9,7 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api-client/api-error';
+import { ChoiceChip } from '@/shared/components/ChoiceChip';
 import { DataTable } from '@/shared/components/DataTable';
 import { StatusBadge, type StatusTone } from '@/shared/components/StatusBadge';
 import { Button } from '@/shared/components/ui/button';
@@ -73,6 +74,42 @@ const ROW_COLUMNS: ColumnDef<RosterImportRow, unknown>[] = [
   },
 ];
 
+const JOB_STATUS: Record<string, { label: string; tone: StatusTone }> = {
+  VALIDATED: { label: 'Waiting to confirm', tone: 'warning' },
+  COMPLETED: { label: 'Imported', tone: 'success' },
+  FAILED: { label: 'Failed', tone: 'danger' },
+  CANCELLED: { label: 'Cancelled', tone: 'neutral' },
+};
+
+/** A numbered step of the import, so the order of the page is plain. */
+function StepTitle({
+  step,
+  title,
+  description,
+}: {
+  step: number;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span
+        aria-hidden
+        className="flex size-7 shrink-0 items-center justify-center rounded-full bg-mint text-[13px] font-semibold text-primary"
+      >
+        {step}
+      </span>
+      <div className="min-w-0">
+        <h2 className="text-base font-semibold">
+          <span className="sr-only">Step {step}: </span>
+          {title}
+        </h2>
+        <p className="mt-0.5 text-[13px] text-muted-foreground">{description}</p>
+      </div>
+    </div>
+  );
+}
+
 /** Admin §G roster import: upload, check every row, then confirm. */
 export function RosterImportPage() {
   const queryClient = useQueryClient();
@@ -118,9 +155,10 @@ export function RosterImportPage() {
           </Button>
         }
       />
-      <Card>
-        <CardHeader
-          title="1. Upload"
+      <Card className="flex flex-col gap-4">
+        <StepTitle
+          step={1}
+          title="Upload"
           description="Columns: reference number, full name, department, academic year, hostel, block, room number, email."
         />
         <form
@@ -138,7 +176,7 @@ export function RosterImportPage() {
               onChange={(event) => setFile(event.target.files?.[0] ?? null)}
             />
           </Field>
-          <Button type="submit" disabled={!file || upload.isPending}>
+          <Button type="submit" className="font-semibold" disabled={!file || upload.isPending}>
             {upload.isPending ? 'Checking…' : 'Check file'}
           </Button>
         </form>
@@ -160,18 +198,22 @@ export function RosterImportPage() {
         <CardHeader title="Recent imports" />
         <ul className="divide-y divide-border text-sm">
           {(history.data?.items ?? []).map((job) => (
-            <li key={job.id} className="flex flex-wrap justify-between gap-2 py-2">
-              <button
-                type="button"
-                className="text-left text-primary hover:underline"
-                onClick={() => setCurrent(job)}
-              >
-                {job.fileName}
-              </button>
-              <span className="text-muted-foreground">
-                {job.status} · {job.totalRows} rows · {formatDateTime(job.createdAt)} ·{' '}
-                {job.createdByName}
+            <li key={job.id} className="flex items-center gap-2.5 py-2.5">
+              <span className="min-w-0 flex-1 leading-tight">
+                <button
+                  type="button"
+                  className="block max-w-full truncate text-left text-[13px] font-semibold text-primary hover:underline"
+                  onClick={() => setCurrent(job)}
+                >
+                  {job.fileName}
+                </button>
+                <span className="block text-xs text-muted-foreground">
+                  {job.totalRows} rows · {formatDateTime(job.createdAt)} · {job.createdByName}
+                </span>
               </span>
+              <StatusBadge
+                {...(JOB_STATUS[job.status] ?? { label: job.status, tone: 'neutral' })}
+              />
             </li>
           ))}
           {history.data?.items.length === 0 ? (
@@ -229,50 +271,47 @@ function ImportPreview({
   const blocking = summary.counts.INVALID + summary.counts.DUPLICATE_IN_FILE;
 
   return (
-    <Card>
-      <CardHeader
-        title={`2. Review ${summary.fileName}`}
-        description={
-          summary.status === 'COMPLETED'
-            ? `Imported ${formatDateTime(summary.completedAt)}`
-            : `${summary.totalRows} rows checked`
-        }
-        actions={
-          summary.status === 'COMPLETED' ? (
-            <StatusBadge label="Imported" tone="success" />
-          ) : (
-            <Button disabled={!summary.canConfirm} onClick={onConfirm}>
-              Confirm import
-            </Button>
-          )
-        }
-      />
+    <Card className="flex flex-col gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <StepTitle
+          step={2}
+          title={`Review ${summary.fileName}`}
+          description={
+            summary.status === 'COMPLETED'
+              ? `Imported ${formatDateTime(summary.completedAt)}`
+              : `${summary.totalRows} rows checked`
+          }
+        />
+        {summary.status === 'COMPLETED' ? (
+          <StatusBadge label="Imported" tone="success" />
+        ) : (
+          <Button className="h-12 font-semibold" disabled={!summary.canConfirm} onClick={onConfirm}>
+            Confirm import
+          </Button>
+        )}
+      </div>
       {blocking > 0 && summary.status !== 'COMPLETED' ? (
         <p
           role="alert"
-          className="mb-3 rounded-md border border-danger/30 bg-danger-surface p-3 text-sm text-danger"
+          className="rounded-md border border-danger/30 bg-danger-surface p-3 text-sm text-danger"
         >
           {blocking === 1 ? '1 row has' : `${blocking} rows have`} errors or duplicates. Fix them in
           the file and upload it again.
         </p>
       ) : null}
-      <div className="mb-3 flex flex-wrap gap-2" role="group" aria-label="Filter rows by result">
-        <Button
-          size="sm"
-          variant={outcome === undefined ? 'default' : 'outline'}
+      <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Filter rows by result">
+        <ChoiceChip
+          label={`All · ${summary.totalRows}`}
+          isSelected={outcome === undefined}
           onClick={() => (setOutcome(undefined), table.resetPage())}
-        >
-          All ({summary.totalRows})
-        </Button>
+        />
         {ROSTER_ROW_OUTCOMES.map((key) => (
-          <Button
+          <ChoiceChip
             key={key}
-            size="sm"
-            variant={outcome === key ? 'default' : 'outline'}
+            label={`${OUTCOMES[key].label} · ${summary.counts[key]}`}
+            isSelected={outcome === key}
             onClick={() => (setOutcome(key), table.resetPage())}
-          >
-            {OUTCOMES[key].label} ({summary.counts[key]})
-          </Button>
+          />
         ))}
       </div>
       <DataTable

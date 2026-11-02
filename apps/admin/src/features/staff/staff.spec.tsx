@@ -41,7 +41,7 @@ describe('RolesPage (Admin §A)', () => {
       AUDITOR,
     ]);
 
-    const [wardenSave] = screen.getAllByRole('button', { name: 'Save' });
+    const [wardenSave] = screen.getAllByRole('button', { name: /^Save / });
     fireEvent.click(wardenSave as HTMLElement);
     const dialog = await screen.findByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText('Reason (recorded in the audit log)'), {

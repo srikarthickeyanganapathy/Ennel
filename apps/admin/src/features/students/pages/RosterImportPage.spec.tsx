@@ -51,7 +51,7 @@ describe('RosterImportPage (Admin §G)', () => {
     renderWithProviders(<RosterImportPage />);
 
     fireEvent.click(await screen.findByRole('button', { name: 'first.csv' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Error (1)' }));
+    fireEvent.click(await screen.findByRole('radio', { name: 'Error · 1' }));
     await waitFor(() =>
       expect(listRosterImportRows).toHaveBeenLastCalledWith(FIRST.id, {
         outcome: 'INVALID',

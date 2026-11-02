@@ -6,14 +6,32 @@ import {
   StaffRole,
 } from '@ennel/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { QueryBoundary } from '@/shared/components/QueryStates';
 import { ReasonDialog } from '@/shared/components/ReasonDialog';
 import { Button } from '@/shared/components/ui/button';
+import { Card } from '@/shared/components/ui/card';
 import { Checkbox } from '@/shared/components/ui/form-controls';
 import { PageHeader } from '@/shared/layout/PageHeader';
+import { cn } from '@/shared/lib/utils';
 import { listRoles, updateRolePermissions } from '../api/staff-api';
+
+const HEAD = 'px-3 py-3 text-xs font-semibold whitespace-nowrap text-muted-foreground';
+const STICKY = 'sticky left-0 z-10';
+
+const GROUP_TITLES: Record<string, string> = {
+  'no-shows': 'No-shows',
+  'mess-config': 'Slots & capacity',
+  'audit-log': 'Audit log',
+};
+
+/** Keys read "resource:action"; the resource groups the rows. */
+const GROUPS = [...new Set(PERMISSION_KEYS.map((key) => key.split(':')[0] ?? key))].map((name) => ({
+  name,
+  title: GROUP_TITLES[name] ?? name.charAt(0).toUpperCase() + name.slice(1),
+  keys: PERMISSION_KEYS.filter((key) => key.split(':')[0] === name),
+}));
 
 /** Role → permission matrix (Admin §A); only Super Admins (roles:manage) can change it. */
 export function RolesPage() {
@@ -59,6 +77,7 @@ export function RolesPage() {
         role.permissions.some((key) => !current.has(key)))
     );
   };
+  const list = roles.data ?? [];
 
   return (
     <div>
@@ -72,56 +91,74 @@ export function RolesPage() {
         error={roles.error}
         onRetry={() => void roles.refetch()}
       >
-        <div className="overflow-x-auto rounded-md border border-border">
-          <table className="w-full text-sm">
+        <Card className="relative overflow-x-auto p-0">
+          <table className="w-full min-w-[820px]">
             <caption className="sr-only">Permissions by role</caption>
-            <thead className="bg-surface">
+            <thead className="bg-neutral-surface">
               <tr>
-                <th scope="col" className="px-3 py-2 text-left">
+                <th scope="col" className={cn(HEAD, STICKY, 'bg-neutral-surface pl-5 text-left')}>
                   Permission
                 </th>
-                {(roles.data ?? []).map((role) => (
-                  <th key={role.id} scope="col" className="px-3 py-2 text-center">
+                {list.map((role) => (
+                  <th key={role.id} scope="col" className={cn(HEAD, 'w-28 text-center')}>
                     {role.name}
-                    <div className="text-xs font-normal text-muted-foreground">
-                      {role.staffCount} staff
-                    </div>
+                    <span className="block font-normal">{role.staffCount} staff</span>
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {PERMISSION_KEYS.map((key) => (
-                <tr key={key} className="border-t border-border">
-                  <th scope="row" className="px-3 py-2 text-left font-normal">
-                    <code className="text-xs">{key}</code>
-                    <div className="text-xs text-muted-foreground">
-                      {PERMISSION_DESCRIPTIONS[key]}
-                    </div>
-                  </th>
-                  {(roles.data ?? []).map((role) => (
-                    <td key={role.id} className="px-3 py-2 text-center">
-                      <Checkbox
-                        aria-label={`${role.name}: ${key}`}
-                        checked={draft[role.id]?.has(key) ?? false}
-                        disabled={role.key === StaffRole.SUPER_ADMIN}
-                        onChange={() => toggle(role.id, key)}
-                      />
-                    </td>
+              {GROUPS.map((group) => (
+                <Fragment key={group.name}>
+                  <tr className="border-t border-border bg-surface">
+                    <th
+                      scope="colgroup"
+                      colSpan={list.length + 1}
+                      className="py-2 pl-5 text-left text-xs font-semibold text-muted-foreground"
+                    >
+                      {group.title}
+                    </th>
+                  </tr>
+                  {group.keys.map((key) => (
+                    <tr key={key} className="border-t border-border">
+                      <th
+                        scope="row"
+                        className={cn(
+                          STICKY,
+                          'bg-background py-2.5 pr-3 pl-5 text-left font-normal',
+                        )}
+                      >
+                        <span className="block text-[13px]">{PERMISSION_DESCRIPTIONS[key]}</span>
+                        <code className="text-[11px] text-muted-foreground">{key}</code>
+                      </th>
+                      {list.map((role) => (
+                        <td key={role.id} className="px-3 py-2.5 text-center">
+                          <Checkbox
+                            aria-label={`${role.name}: ${key}`}
+                            checked={draft[role.id]?.has(key) ?? false}
+                            disabled={role.key === StaffRole.SUPER_ADMIN}
+                            onChange={() => toggle(role.id, key)}
+                          />
+                        </td>
+                      ))}
+                    </tr>
                   ))}
-                </tr>
+                </Fragment>
               ))}
             </tbody>
             <tfoot>
-              <tr className="border-t border-border">
-                <td className="px-3 py-2 text-xs text-muted-foreground">
+              <tr className="border-t border-border bg-surface">
+                <td
+                  className={cn(STICKY, 'bg-surface py-3 pr-3 pl-5 text-xs text-muted-foreground')}
+                >
                   Super Admin always has every permission.
                 </td>
-                {(roles.data ?? []).map((role) => (
-                  <td key={role.id} className="px-3 py-2 text-center">
+                {list.map((role) => (
+                  <td key={role.id} className="px-3 py-3 text-center">
                     {role.key === StaffRole.SUPER_ADMIN ? null : (
                       <Button
                         size="sm"
+                        aria-label={`Save ${role.name}`}
                         disabled={!isChanged(role)}
                         onClick={() => (save.reset(), setSaving(role))}
                       >
@@ -133,7 +170,7 @@ export function RolesPage() {
               </tr>
             </tfoot>
           </table>
-        </div>
+        </Card>
       </QueryBoundary>
       <ReasonDialog
         open={saving !== null}
