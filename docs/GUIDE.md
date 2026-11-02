@@ -75,7 +75,9 @@ The project is built in phases. Phases 0–10 are done. **Many screens you might
 | Admin: **No-shows** (tabs on Attendance: reports to review, outage review, reset a count, turn Default Booking back on)             | ✅ Works (Phase 9)                                                                                                                   |
 | Admin: **Complaints** (inbox, filters, photos, status and reply, assign, internal notes, quality overview)                          | ✅ Works (Phase 10)                                                                                                                  |
 | Admin: **Announcements** (compose, choose who gets it, count recipients, schedule, send now, cancel, delivery counts)               | ✅ Works (Phase 10): scheduled ones need the worker running (`pnpm dev:worker`)                                                      |
-| Admin: forecasting, reports, system health                                                                                          | ⏳ Phase 11 (not in the sidebar yet)                                                                                                 |
+| Admin: **Meal forecast** (booked and expected plates per meal, slot and diet, kitchen sheet as PDF or Excel)                        | ✅ Works (Phase 11)                                                                                                                  |
+| Admin: **Reports** (served, No-shows, waste in plates, slots, cancellations, leave, complaints; CSV, Excel, PDF)                    | ✅ Works (Phase 11)                                                                                                                  |
+| Admin: **System health** (background jobs, queue, attendance provider, outage switch, run a job again)                              | ✅ Works (Phase 11)                                                                                                                  |
 
 ---
 
@@ -93,11 +95,12 @@ You need **these things running**. Use one terminal window for each `pnpm dev:*`
 | 6   | Student app       | `pnpm dev:mobile`                   | shows a QR code; the app prints `[ENNEL] API_URL = ...` when it opens         |
 | 7   | Background worker | `pnpm dev:worker`                   | prints `Worker ready; generate-default-bookings runs daily at 00:30 IST, ...` |
 
-The worker runs three jobs:
+The worker runs four jobs (the fourth builds long report exports):
 
 - **Every night** it books the next days from everyone's Default Booking settings. Without it, bookings still appear when a student saves settings, but new days are not added each night.
 - **Every 5 minutes** it closes meal windows that have ended: each meal that is still Booked becomes **Meal Completed** (attendance found) or **No-show**. Without it, past meals stay "Booked" and never reach My Bookings.
 - **Every minute** it sends announcements whose scheduled time has come. Without it, "Send now" still works but scheduled announcements wait.
+- **Every minute** it also builds report exports longer than 31 days. Without it, those stay on "Waiting"; shorter exports still download straight away.
 
 **Turning on push notifications (later).** Push is off by default (`PUSH_PROVIDER=none` in `.env`), so students only see notices inside the app. To turn it on you need an Expo (EAS) project for the student app; then set `PUSH_PROVIDER=expo` (and `EXPO_ACCESS_TOKEN` if the project asks for one) in `.env` and restart the API. A push only ever says "You have a new notice"; the message itself stays in the app.
 
@@ -255,22 +258,23 @@ The app shows _"Cannot reach the ENNEL server at http://…:3000"_.
 
 ### Step 6: Common one-off problems
 
-| Symptom                                                                                        | Fix                                                                                                      |
-| ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| API crashes on start with `Cannot find module '@ennel/shared'` or "does not provide an export" | `pnpm build:shared` (or keep `pnpm dev:shared` running), then restart the API                            |
-| `Port 3000 is already in use`                                                                  | an old API is still running in another window; close it                                                  |
-| `Can't reach database server`                                                                  | Docker Desktop is closed; open it, then `pnpm db:up`                                                     |
-| Error about a missing column or table                                                          | `pnpm db:migrate`                                                                                        |
-| Admin forgot password and is locked out                                                        | `pnpm db:seed` does **not** reset it. Ask another Super Admin to reset it from Staff & roles.            |
-| Everything is weird after pulling new code                                                     | `pnpm install`, `pnpm build:shared`, `pnpm db:migrate`, then restart all terminals                       |
-| Phone: _"Project is incompatible with this version of Expo Go"_                                | Update Expo Go from the Play Store / App Store (the project needs SDK 58)                                |
-| Student app still shows an old error or old styling after a fix                                | stop Expo (Ctrl+C) and start it with a cleared cache: `pnpm dev:mobile --clear`                          |
-| Web: _"Cannot manually set color scheme, as dark mode is type 'media'"_                        | fixed in `apps/mobile/tailwind.config.js` (`darkMode: 'class'`); restart Expo with `--clear`             |
-| Expo says _"An update for expo is available"_ or _"packages may need updating"_                | `cd apps/mobile`, then `npx expo install --check`; ask before upgrading to a new SDK number              |
-| A scheduled announcement never goes out                                                        | the worker is not running; start it with `pnpm dev:worker` (it checks every minute)                      |
-| Announcement shows "push not delivered" for everyone                                           | expected while `PUSH_PROVIDER=none` in `.env`; students still get it in the app                          |
-| A student cannot see their anonymous report after reinstalling the app or on another phone     | expected: anonymous reports are found only with the receipt saved on the phone that sent them (ADR-0008) |
-| Browser console: _"blocked by CORS policy"_                                                    | the API only accepts the admin site, plus `localhost` pages in development; see section 3                |
+| Symptom                                                                                        | Fix                                                                                                                      |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| API crashes on start with `Cannot find module '@ennel/shared'` or "does not provide an export" | `pnpm build:shared` (or keep `pnpm dev:shared` running), then restart the API                                            |
+| `Port 3000 is already in use`                                                                  | an old API is still running in another window; close it                                                                  |
+| `Can't reach database server`                                                                  | Docker Desktop is closed; open it, then `pnpm db:up`                                                                     |
+| Error about a missing column or table                                                          | `pnpm db:migrate`                                                                                                        |
+| Admin forgot password and is locked out                                                        | `pnpm db:seed` does **not** reset it. Ask another Super Admin to reset it from Staff & roles.                            |
+| Everything is weird after pulling new code                                                     | `pnpm install`, `pnpm build:shared`, `pnpm db:migrate`, then restart all terminals                                       |
+| Phone: _"Project is incompatible with this version of Expo Go"_                                | Update Expo Go from the Play Store / App Store (the project needs SDK 58)                                                |
+| Student app still shows an old error or old styling after a fix                                | stop Expo (Ctrl+C) and start it with a cleared cache: `pnpm dev:mobile --clear`                                          |
+| Web: _"Cannot manually set color scheme, as dark mode is type 'media'"_                        | fixed in `apps/mobile/tailwind.config.js` (`darkMode: 'class'`); restart Expo with `--clear`                             |
+| Expo says _"An update for expo is available"_ or _"packages may need updating"_                | `cd apps/mobile`, then `npx expo install --check`; ask before upgrading to a new SDK number                              |
+| A scheduled announcement never goes out                                                        | the worker is not running; start it with `pnpm dev:worker` (it checks every minute)                                      |
+| A long report export stays on "Waiting"                                                        | the worker is not running; start it with `pnpm dev:worker`. System health also shows jobs as "Overdue" when this happens |
+| Announcement shows "push not delivered" for everyone                                           | expected while `PUSH_PROVIDER=none` in `.env`; students still get it in the app                                          |
+| A student cannot see their anonymous report after reinstalling the app or on another phone     | expected: anonymous reports are found only with the receipt saved on the phone that sent them (ADR-0008)                 |
+| Browser console: _"blocked by CORS policy"_                                                    | the API only accepts the admin site, plus `localhost` pages in development; see section 3                                |
 
 ---
 

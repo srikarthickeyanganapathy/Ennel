@@ -1,29 +1,22 @@
 import { type AdminMenu, type MenuItemInput } from '@ennel/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { usePermissions } from '@/features/auth/auth-context';
 import { errorMessage, isVersionConflict } from '@/shared/api-client/api-error';
-import { DatePickerButton } from '@/shared/components/DatePickerButton';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { QueryBoundary } from '@/shared/components/QueryStates';
 import { StatusBadge, type StatusTone } from '@/shared/components/StatusBadge';
 import { Button } from '@/shared/components/ui/button';
+import { WeekPicker } from '@/shared/components/WeekPicker';
 import { PageHeader } from '@/shared/layout/PageHeader';
-import { addDays, formatBusinessDate, startOfWeek, todayBusinessDate } from '@/shared/lib/format';
+import { addDays, startOfWeek, todayBusinessDate } from '@/shared/lib/format';
 import { cn } from '@/shared/lib/utils';
 import { getMenuWeek, saveMenu } from '../api/menus-api';
 import { DishLibraryCard } from '../components/DishLibraryCard';
 import { MenuEditorDialog } from '../components/MenuEditorDialog';
 import { hasUnpublishedWork, MenuWeekGrid } from '../components/MenuWeekGrid';
 import { CopyWeekDialog, PublishWeekDialog } from '../components/WeekDialogs';
-
-function weekText(weekStart: string): string {
-  const end = addDays(weekStart, 6);
-  const isSameMonth = weekStart.slice(0, 7) === end.slice(0, 7);
-  return `Week of ${formatBusinessDate(weekStart, isSameMonth ? 'd' : 'd MMM')} – ${formatBusinessDate(end, 'd MMM')}`;
-}
 
 function weekState(
   menus: AdminMenu[],
@@ -104,32 +97,7 @@ export function MenusPage() {
             ? `Draft · ${unpublished.length} unpublished ${unpublished.length === 1 ? 'change' : 'changes'}`
             : state.label
         }
-        actions={
-          <div className="flex items-center gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Previous week"
-              onClick={() => setWeekStart(addDays(weekStart, -7))}
-            >
-              <ChevronLeft aria-hidden />
-            </Button>
-            <DatePickerButton
-              value={weekStart}
-              text={weekText(weekStart)}
-              label="Choose a week"
-              onChange={(date) => date && setWeekStart(startOfWeek(date))}
-            />
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Next week"
-              onClick={() => setWeekStart(addDays(weekStart, 7))}
-            >
-              <ChevronRight aria-hidden />
-            </Button>
-          </div>
-        }
+        actions={<WeekPicker weekStart={weekStart} onChange={setWeekStart} />}
       />
       <div className="mb-6 flex flex-wrap items-center gap-2">
         <StatusBadge label={state.label} tone={state.tone} />

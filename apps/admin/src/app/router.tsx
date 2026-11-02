@@ -4,6 +4,9 @@ import { AccountPage } from '@/features/auth/pages/AccountPage';
 import { ChangePasswordPage } from '@/features/auth/pages/ChangePasswordPage';
 import { LoginPage } from '@/features/auth/pages/LoginPage';
 import { DashboardPage } from '@/features/dashboard/pages/DashboardPage';
+import { ForecastPage } from '@/features/forecast/pages/ForecastPage';
+import { ReportsPage } from '@/features/reports/pages/ReportsPage';
+import { SystemHealthPage } from '@/features/system/pages/SystemHealthPage';
 import { HostelsPage } from '@/features/mess-config/pages/HostelsPage';
 import { MessConfigPage } from '@/features/mess-config/pages/MessConfigPage';
 import { MenusPage } from '@/features/menus/pages/MenusPage';
@@ -34,6 +37,30 @@ export const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'account', element: <AccountPage /> },
+          {
+            path: 'forecast',
+            element: (
+              <RequirePermission anyOf={['forecasting:read']}>
+                <ForecastPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'reports',
+            element: (
+              <RequirePermission anyOf={['reports:read']}>
+                <ReportsPage />
+              </RequirePermission>
+            ),
+          },
+          {
+            path: 'system',
+            element: (
+              <RequirePermission anyOf={['system:read']}>
+                <SystemHealthPage />
+              </RequirePermission>
+            ),
+          },
           {
             path: 'bookings',
             element: (

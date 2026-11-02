@@ -1,5 +1,7 @@
 import { type PendingWork, type PermissionKey } from '@ennel/shared';
 import {
+  Activity,
+  BarChart3,
   Briefcase,
   Building2,
   CalendarCheck2,
@@ -10,6 +12,7 @@ import {
   ScrollText,
   Settings,
   Shield,
+  TrendingUp,
   Users,
   Utensils,
 } from 'lucide-react';
@@ -34,8 +37,7 @@ export interface NavItem {
  * Icons follow the Figma sidebar. Where the design has an icon, the installed Lucide icon with the
  * same shape is used; Attendance and Announcements have no exact Lucide match in this version, so
  * the Figma files are used. Pages the design does not show (Bookings, Closures, Hostels,
- * Audit log) use Lucide icons in the same style. Later phases add their pages (forecasting, reports,
- * health).
+ * Audit log) use Lucide icons in the same style.
  */
 export const NAV_ITEMS: NavItem[] = [
   {
@@ -43,6 +45,13 @@ export const NAV_ITEMS: NavItem[] = [
     path: '/',
     anyOf: ['dashboard:read', 'dashboard:read-today'],
     icon: LayoutDashboard,
+    section: 'main',
+  },
+  {
+    label: 'Meal forecast',
+    path: '/forecast',
+    anyOf: ['forecasting:read'],
+    icon: TrendingUp,
     section: 'main',
   },
   {
@@ -120,10 +129,24 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'admin',
   },
   {
+    label: 'Reports',
+    path: '/reports',
+    anyOf: ['reports:read'],
+    icon: BarChart3,
+    section: 'admin',
+  },
+  {
     label: 'Staff & roles',
     path: '/staff',
     anyOf: ['staff:read', 'roles:manage'],
     icon: Shield,
+    section: 'admin',
+  },
+  {
+    label: 'System health',
+    path: '/system',
+    anyOf: ['system:read'],
+    icon: Activity,
     section: 'admin',
   },
   {

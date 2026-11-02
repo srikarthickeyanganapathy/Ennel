@@ -9,6 +9,7 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
   it('shows Mess Staff only what their counter and kitchen work needs', () => {
     expect(labelsFor(StaffRole.MESS_STAFF)).toEqual([
       'Dashboard',
+      'Meal forecast',
       'Attendance',
       'Menu',
       'Closures',
@@ -18,7 +19,7 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
   });
 
   it('shows the Auditor policy and the audit log but not operations', () => {
-    expect(labelsFor(StaffRole.AUDITOR)).toEqual(['Settings & rules', 'Audit log']);
+    expect(labelsFor(StaffRole.AUDITOR)).toEqual(['Settings & rules', 'Reports', 'Audit log']);
   });
 
   it('shows Wardens students but not bookings or staff management', () => {
@@ -32,7 +33,7 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
   });
 
   it('shows the Super Admin everything', () => {
-    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(14);
+    expect(labelsFor(StaffRole.SUPER_ADMIN)).toHaveLength(17);
     expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('Bookings');
     expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('Attendance');
     expect(labelsFor(StaffRole.MESS_MANAGER)).toContain('Announcements');
