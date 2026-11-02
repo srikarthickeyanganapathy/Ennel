@@ -62,6 +62,9 @@ export const attendanceCounterSchema = z.object({
       label: z.string(),
       booked: z.number().int(),
       attended: z.number().int(),
+      noShow: z.number().int(),
+      /** False until the slot's start time, so an empty slot reads "Not started", not behind. */
+      hasStarted: z.boolean(),
     }),
   ),
   recent: z.array(attendanceMarkSchema),

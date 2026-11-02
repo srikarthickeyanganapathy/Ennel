@@ -48,6 +48,20 @@ describe('admin menus', () => {
     await ctx.app.close();
   });
 
+  it('lists each dish once for the dish library, without dishes removed from a draft', async () => {
+    const menu = await save([...RICE, ...CURRY]);
+    const next = await as('put', `/api/v1/admin/menus/${addBusinessDays(date(), 1)}/LUNCH`)
+      .send({ items: RICE })
+      .expect(200);
+    expect(next.body.items).toEqual(RICE);
+    const before = await as('get', '/api/v1/admin/menus/dishes').expect(200);
+    expect(before.body.items).toEqual([...CURRY, ...RICE]);
+
+    await save(RICE, menu.version);
+    const after = await as('get', '/api/v1/admin/menus/dishes').expect(200);
+    expect(after.body.items).toEqual(RICE);
+  });
+
   it('notifies booked students for every changed published version, even a repeat', async () => {
     await http()
       .post('/api/v1/auth/register')

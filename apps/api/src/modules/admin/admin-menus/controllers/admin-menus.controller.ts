@@ -5,6 +5,7 @@ import {
   businessDateSchema,
   copyMenuWeekRequestSchema,
   mealTypeSchema,
+  type MenuDishList,
   type MenuWeek,
   menuWeekQuerySchema,
   type PublishMenuResponse,
@@ -35,6 +36,12 @@ export class AdminMenusController {
     @Query(new ZodValidationPipe(menuWeekQuerySchema)) query: z.output<typeof menuWeekQuerySchema>,
   ): Promise<MenuWeek> {
     return this.editor.week(query.from, query.days);
+  }
+
+  @Get('dishes')
+  @RequirePermissions('menus:read')
+  dishes(): Promise<MenuDishList> {
+    return this.editor.dishes();
   }
 
   @Post('bulk')

@@ -8,6 +8,7 @@ import {
   ErrorCode,
   type MealType,
   toBusinessDate,
+  toInstant,
 } from '@ennel/shared';
 import { AppError } from '../../../../common/errors/app-error';
 import { Clock } from '../../../../infrastructure/clock/clock';
@@ -57,7 +58,8 @@ export class AttendanceCounterService {
   async counter(date: BusinessDate, mealType: MealType): Promise<AttendanceCounter> {
     const meal = await this.meal(mealType);
     const window = attendanceWindow(date, meal);
-    const phase = windowPhase(window, this.clock.now());
+    const now = this.clock.now();
+    const phase = windowPhase(window, now);
     const bookings = (await this.attendance.windowBookings(date, meal.id)).filter((booking) =>
       SERVED.has(booking.status),
     );
@@ -76,7 +78,12 @@ export class AttendanceCounterService {
         attended: bookings.filter((booking) => booking.hasAttendance).length + bookingless,
         noShow: bookings.filter((booking) => booking.status === 'NO_SHOW').length,
       },
-      slots: meal.slots.map((slot) => slotCounts(slot, bookings)).filter((slot) => slot.booked > 0),
+      slots: meal.slots
+        .map((slot) => ({
+          ...slotCounts(slot, bookings),
+          hasStarted: toInstant(date, slot.startMinute) <= now,
+        }))
+        .filter((slot) => slot.booked > 0),
       recent: await this.admin.recentMarks(date, meal.id, RECENT_MARKS),
     };
   }
@@ -128,5 +135,6 @@ function slotCounts(slot: { id: string; label: string }, bookings: WindowBooking
     label: slot.label,
     booked: inSlot.length,
     attended: inSlot.filter((booking) => booking.hasAttendance).length,
+    noShow: inSlot.filter((booking) => booking.status === 'NO_SHOW').length,
   };
 }

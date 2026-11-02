@@ -7,6 +7,7 @@ import {
   MEAL_TYPE_ORDER,
   type MealType,
   type MenuItemInput,
+  type MenuDishList,
   type MenuWeek,
 } from '@ennel/shared';
 import { AppError } from '../../../../common/errors/app-error';
@@ -36,6 +37,10 @@ export class MenuEditorService {
     private readonly transactions: TransactionRunner,
     private readonly audit: AuditWriter,
   ) {}
+
+  async dishes(): Promise<MenuDishList> {
+    return { items: await this.menus.dishes() };
+  }
 
   async week(from: BusinessDate, days: number): Promise<MenuWeek> {
     const stored = await this.menus.listRange(from, addBusinessDays(from, days - 1));

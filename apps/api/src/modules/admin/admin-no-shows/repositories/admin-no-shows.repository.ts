@@ -94,6 +94,29 @@ export class AdminNoShowsRepository {
     return (await this.prisma.student.count({ where: { id: studentId } })) === 1;
   }
 
+  /** Student and meal pairs with at least `minimum` counted events in the window. */
+  async countedByStudentMeal(from: BusinessDate, minimum: number) {
+    const groups = await this.prisma.noShowEvent.groupBy({
+      by: ['studentId', 'mealType'],
+      where: { status: 'COUNTED', mealDate: { gte: toDbDate(from) } },
+      having: { studentId: { _count: { gte: minimum } } },
+      _count: { _all: true },
+    });
+    return groups.map((group) => ({
+      studentId: group.studentId,
+      mealType: group.mealType as MealType,
+      count: group._count._all,
+    }));
+  }
+
+  async studentRefs(ids: string[]): Promise<Map<string, AdminNoShowEvent['student']>> {
+    const rows = await this.prisma.student.findMany({
+      where: { id: { in: ids } },
+      select: EVENT_INCLUDE.student.select,
+    });
+    return new Map(rows.map((row) => [row.id, toStudentRef(row)]));
+  }
+
   /** Counted events per student and meal in the window, keyed `studentId#MEAL`. */
   private async countsFor(rows: EventRow[], from: BusinessDate): Promise<Map<string, number>> {
     const studentIds = [...new Set(rows.map((row) => row.studentId))];
@@ -147,6 +170,15 @@ function buildWhere(query: ListQuery): Prisma.NoShowEventWhereInput {
   };
 }
 
+function toStudentRef(row: EventRow['student']): AdminNoShowEvent['student'] {
+  return {
+    id: row.id,
+    fullName: row.fullName,
+    referenceNumber: row.rosterEntry.referenceNumber,
+    blockName: row.hostelBlock?.name ?? null,
+  };
+}
+
 function toAdminEvent(
   row: EventRow,
   counts: Map<string, number>,
@@ -162,12 +194,7 @@ function toAdminEvent(
     exclusionCause: row.exclusionCause,
     excludedReason: row.excludedReason,
     excludedByName: row.excludedBy?.fullName ?? null,
-    student: {
-      id: row.student.id,
-      fullName: row.student.fullName,
-      referenceNumber: row.student.rosterEntry.referenceNumber,
-      blockName: row.student.hostelBlock?.name ?? null,
-    },
+    student: toStudentRef(row.student),
     currentCount: counts.get(key) ?? 0,
     isAutoDisabled: disabled.has(key),
     appeal: appeal

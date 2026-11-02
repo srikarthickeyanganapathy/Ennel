@@ -37,6 +37,10 @@ export const menuWeekSchema = z.object({
 });
 export type MenuWeek = z.infer<typeof menuWeekSchema>;
 
+/** `GET /admin/menus/dishes`: every dish used on a menu so far, for the dish library (Admin §E). */
+export const menuDishListSchema = z.object({ items: z.array(menuItemInputSchema) });
+export type MenuDishList = z.infer<typeof menuDishListSchema>;
+
 export const saveMenuRequestSchema = z
   .object({
     items: z.array(menuItemInputSchema).max(40),

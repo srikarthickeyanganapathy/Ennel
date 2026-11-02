@@ -57,6 +57,8 @@ function toMenu(row: MenuRow): StoredMenu {
   };
 }
 
+const MAX_LIBRARY_DISHES = 300;
+
 @Injectable()
 export class AdminMenusRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -67,6 +69,17 @@ export class AdminMenusRepository {
       select: { id: true, mealType: true },
     });
     return new Map(meals.map((meal) => [meal.mealType, meal.id]));
+  }
+
+  /** Distinct dishes on live menu rows, by name; capped so the library stays small. */
+  dishes(): Promise<MenuItemInput[]> {
+    return this.prisma.menuItem.findMany({
+      where: { deletedAt: null },
+      distinct: ['name', 'dietType'],
+      orderBy: { name: 'asc' },
+      select: { name: true, dietType: true },
+      take: MAX_LIBRARY_DISHES,
+    });
   }
 
   async listRange(

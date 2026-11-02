@@ -54,6 +54,19 @@ export const adminNoShowListResponseSchema = paginatedResponseSchema(adminNoShow
 );
 export type AdminNoShowList = z.infer<typeof adminNoShowListResponseSchema>;
 
+/** `GET /admin/no-shows/at-risk`: students at the warning level for a meal (BR-NS-4). */
+export const noShowAtRiskSchema = z.object({
+  windowDays: z.number().int(),
+  warningThreshold: z.number().int(),
+  disableThreshold: z.number().int(),
+  /** All students at risk; `items` holds the highest counts first and may be shorter. */
+  total: z.number().int(),
+  items: z.array(
+    z.object({ student: studentRefSchema, mealType: mealTypeSchema, count: z.number().int() }),
+  ),
+});
+export type NoShowAtRisk = z.infer<typeof noShowAtRiskSchema>;
+
 export const decideAppealRequestSchema = z.object({ reason: overrideReasonSchema.optional() });
 export const rejectAppealRequestSchema = z.object({ reason: overrideReasonSchema });
 export const reviewHeldRequestSchema = z.object({ reason: overrideReasonSchema });

@@ -112,6 +112,38 @@ describe('no-shows and appeals (Spec §10, Admin §J, BR-NS, ADR-0009, ADR-0027)
     expect(events.every((event: { canAppeal: boolean }) => event.canAppeal)).toBe(true);
   });
 
+  it('lists students at the warning level as at risk, not those below it or disabled (BR-NS-4)', async () => {
+    const manager = await staffToken(ctx, ['MESS_MANAGER']);
+    const atRisk = async () =>
+      (
+        await http()
+          .get('/api/v1/admin/no-shows/at-risk')
+          .set('Authorization', `Bearer ${manager}`)
+          .expect(200)
+      ).body;
+    for (const daysAgo of [3, 4]) await seedNoShow(daysAgo);
+    expect(await atRisk()).toMatchObject({ warningThreshold: 3, disableThreshold: 5, total: 0 });
+
+    await seedNoShow(5);
+    await seedNoShow(40); // Outside the rolling window.
+    expect((await atRisk()).items).toEqual([
+      {
+        student: expect.objectContaining({ id: studentId, referenceNumber: '24900001' }),
+        mealType: 'LUNCH',
+        count: 3,
+      },
+    ]);
+
+    for (const daysAgo of [6, 7]) await seedNoShow(daysAgo);
+    expect((await atRisk()).total).toBe(0);
+
+    const staff = await staffToken(ctx, ['MESS_STAFF']);
+    await http()
+      .get('/api/v1/admin/no-shows/at-risk')
+      .set('Authorization', `Bearer ${staff}`)
+      .expect(403);
+  });
+
   it('turns Default Booking off at five when a window closes, and lifts it after an approved appeal', async () => {
     const events = [];
     for (const daysAgo of [3, 4, 5, 6]) events.push(await seedNoShow(daysAgo));

@@ -5,6 +5,7 @@ import {
   ErrorCode,
   type MealType,
   type NoShowActionResult,
+  type NoShowAtRisk,
   toBusinessDate,
 } from '@ennel/shared';
 import { type z } from 'zod';
@@ -15,7 +16,7 @@ import {
   TransactionRunner,
 } from '../../../../infrastructure/database/transaction-runner';
 import { GetMessPolicyService } from '../../../mess-config/services/get-mess-policy.service';
-import { windowStart } from '../../../no-shows/domain/no-show-rules';
+import { levelFor, windowStart } from '../../../no-shows/domain/no-show-rules';
 import { NoShowsRepository } from '../../../no-shows/repositories/no-shows.repository';
 import { NoShowEngine } from '../../../no-shows/services/no-show-engine.service';
 import { NotifyStudentsService } from '../../../notifications/services/notify-students.service';
@@ -24,6 +25,7 @@ import { AdminNoShowsRepository } from '../repositories/admin-no-shows.repositor
 
 type ListQuery = z.output<typeof adminNoShowListQuerySchema>;
 const ACTION_TIMEOUT_MS = 30_000;
+const AT_RISK_SHOWN = 50;
 
 /**
  * Admin §J: the No-show list, the appeal queue, outage review and the manual actions. Every
@@ -56,6 +58,28 @@ export class AdminNoShowsService {
       pageSize: query.pageSize,
       pendingAppeals,
       heldForReview,
+    };
+  }
+
+  /** BR-NS-4: students at the warning level for a meal, closest to the disable threshold first. */
+  async atRisk(): Promise<NoShowAtRisk> {
+    const policy = await this.policies.execute();
+    const from = windowStart(toBusinessDate(this.clock.now()), policy);
+    const counts = await this.admin.countedByStudentMeal(from, policy.noShowWarningThreshold);
+    const atRisk = counts
+      .filter((entry) => levelFor(entry.count, policy) === 'WARNING')
+      .sort((a, b) => b.count - a.count);
+    const shown = atRisk.slice(0, AT_RISK_SHOWN);
+    const students = await this.admin.studentRefs(shown.map((entry) => entry.studentId));
+    return {
+      windowDays: policy.noShowWindowDays,
+      warningThreshold: policy.noShowWarningThreshold,
+      disableThreshold: policy.noShowDisableThreshold,
+      total: atRisk.length,
+      items: shown.flatMap(({ studentId, mealType, count }) => {
+        const student = students.get(studentId);
+        return student ? [{ student, mealType, count }] : [];
+      }),
     };
   }
 

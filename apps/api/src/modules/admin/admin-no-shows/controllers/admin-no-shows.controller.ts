@@ -4,6 +4,7 @@ import {
   adminNoShowListQuerySchema,
   decideAppealRequestSchema,
   type NoShowActionResult,
+  type NoShowAtRisk,
   rejectAppealRequestSchema,
   reviewHeldRequestSchema,
   studentMealActionRequestSchema,
@@ -32,6 +33,12 @@ export class AdminNoShowsController {
     query: z.output<typeof adminNoShowListQuerySchema>,
   ): Promise<AdminNoShowList> {
     return this.noShows.list(query);
+  }
+
+  @Get('at-risk')
+  @RequirePermissions('no-shows:read')
+  atRisk(): Promise<NoShowAtRisk> {
+    return this.noShows.atRisk();
   }
 
   @Post(':id/confirm')

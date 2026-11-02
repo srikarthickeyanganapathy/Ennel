@@ -14,7 +14,7 @@ const toDbDate = (date: BusinessDate) => new Date(`${date}T00:00:00Z`);
 export interface MealWithSlots extends MealTiming {
   id: string;
   mealName: string;
-  slots: { id: string; label: string }[];
+  slots: { id: string; label: string; startMinute: number }[];
 }
 
 export interface WindowBookingRow {
@@ -59,7 +59,7 @@ export class AttendanceRepository {
         slots: {
           where: { deletedAt: null },
           orderBy: { startMinute: 'asc' },
-          select: { id: true, label: true },
+          select: { id: true, label: true, startMinute: true },
         },
       },
     });
