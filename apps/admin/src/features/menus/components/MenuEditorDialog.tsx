@@ -47,7 +47,10 @@ export function MenuEditorDialog({
       setSpecialTitle(menu.specialTitle ?? '');
     }
   }
-  const refresh = () => void queryClient.invalidateQueries({ queryKey: ['menus'] });
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['menus'] });
+    void queryClient.invalidateQueries({ queryKey: ['menu-dishes'] });
+  };
   const onError = (error: Error) => {
     if (!isVersionConflict(error)) return;
     toast.error(`${errorMessage(error)} The latest menu has been loaded.`);

@@ -2,6 +2,8 @@ import {
   type AdminMenu,
   adminMenuSchema,
   type MealType,
+  type MenuDishList,
+  menuDishListSchema,
   type MenuWeek,
   menuWeekSchema,
   type PublishMenuResponse,
@@ -38,3 +40,6 @@ export const copyMenuWeek = (
     body: { fromWeekStart, toWeekStart, overwrite },
     schema: z.object({ copied: z.number() }),
   });
+
+export const getDishes = (): Promise<MenuDishList> =>
+  apiRequest('/menus/dishes', { schema: menuDishListSchema });
