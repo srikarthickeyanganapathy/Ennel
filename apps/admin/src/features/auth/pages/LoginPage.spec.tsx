@@ -39,6 +39,18 @@ function renderAt(path: string) {
 }
 
 describe('staff sign-in (Admin §B)', () => {
+  it('shows and hides the password, and offers no self-service reset that does not exist', () => {
+    renderAt('/login');
+    const password = screen.getByLabelText('Password');
+    expect(password).toHaveAttribute('type', 'password');
+    fireEvent.click(screen.getByRole('button', { name: 'Show the password' }));
+    expect(password).toHaveAttribute('type', 'text');
+    fireEvent.click(screen.getByRole('button', { name: 'Hide the password' }));
+    expect(password).toHaveAttribute('type', 'password');
+    expect(screen.queryByRole('link', { name: /forgot/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/Ask a Super Admin to reset it/)).toBeInTheDocument();
+  });
+
   it('asks for a TOTP code when two-factor sign-in is on', async () => {
     vi.mocked(login).mockResolvedValue({
       status: 'TOTP_REQUIRED',
@@ -85,7 +97,9 @@ describe('staff sign-in (Admin §B)', () => {
 
   it('sends signed-out visitors to the login page', () => {
     renderAt('/');
-    expect(screen.getByRole('heading', { name: 'ENNEL staff sign-in' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: 'Sign in to the staff portal' }),
+    ).toBeInTheDocument();
   });
 
   it('sends staff with a pending password change to that page first', () => {

@@ -1,14 +1,15 @@
 import { StaffRole, type StaffUser } from '@ennel/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef } from '@tanstack/react-table';
+import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router';
 import { toast } from 'sonner';
 import { errorMessage, isVersionConflict } from '@/shared/api-client/api-error';
+import { ChoiceChip } from '@/shared/components/ChoiceChip';
 import { DataTable, type DataTableColumnMeta } from '@/shared/components/DataTable';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { ReasonDialog } from '@/shared/components/ReasonDialog';
-import { StatusBadge } from '@/shared/components/StatusBadge';
+import { StatusBadge, type StatusTone } from '@/shared/components/StatusBadge';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -22,6 +23,7 @@ import { PageHeader } from '@/shared/layout/PageHeader';
 import { formatDateTime } from '@/shared/lib/format';
 import { useAuth } from '@/features/auth/auth-context';
 import {
+  listRoles,
   listStaff,
   resetStaffPassword,
   resetStaffTotp,
@@ -29,8 +31,9 @@ import {
   setStaffRoles,
 } from '../api/staff-api';
 import { CreateStaffDialog } from '../components/CreateStaffDialog';
+import { PermissionMatrixCard } from '../components/PermissionMatrixCard';
 import { TemporaryPasswordDialog } from '../components/TemporaryPasswordDialog';
-import { ROLE_LABELS } from '../constants/role-labels';
+import { ROLE_LABELS, ROLE_SHORT_LABELS } from '../constants/role-labels';
 
 type PendingAction =
   | { kind: 'disable' | 'enable' | 'reset-password' | 'reset-totp'; staff: StaffUser }
@@ -41,17 +44,25 @@ const STATUSES = {
   LOCKED: { label: 'Locked', tone: 'warning' },
   DISABLED: { label: 'Disabled', tone: 'danger' },
 } as const;
+const ROLE_TONES: Record<StaffRole, StatusTone> = {
+  SUPER_ADMIN: 'success',
+  MESS_MANAGER: 'success',
+  MESS_STAFF: 'warning',
+  WARDEN: 'info',
+  AUDITOR: 'neutral',
+};
 const meta = (exportValue: (row: StaffUser) => string): DataTableColumnMeta => ({
   exportValue: (row) => exportValue(row as StaffUser),
 });
 
-/** Staff directory (Admin §A/§B). */
+/** Figma "Admin — Staff & roles": the staff directory and permission summary (Admin §A/§B). */
 export function StaffPage() {
   const queryClient = useQueryClient();
   const { me } = useAuth();
   const table = useTableState();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
+  const [role, setRole] = useState<StaffRole | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [pending, setPending] = useState<PendingAction | null>(null);
   const [password, setPassword] = useState<{ email: string; value: string } | null>(null);
@@ -60,8 +71,14 @@ export function StaffPage() {
     ...table.state,
     q: q || undefined,
     status: (status || undefined) as StaffUser['status'] | undefined,
+    role: role ?? undefined,
   };
   const staff = useQuery({ queryKey: ['staff', query], queryFn: () => listStaff(query) });
+  const everyone = useQuery({
+    queryKey: ['staff', 'count'],
+    queryFn: () => listStaff({ page: 1, pageSize: 1 }),
+  });
+  const roles = useQuery({ queryKey: ['roles'], queryFn: listRoles });
   const refresh = () => void queryClient.invalidateQueries({ queryKey: ['staff'] });
 
   const action = useMutation({
@@ -95,15 +112,25 @@ export function StaffPage() {
       {
         id: 'fullName',
         header: 'Name',
-        accessorKey: 'fullName',
         enableHiding: false,
-        meta: meta((row) => row.fullName),
+        cell: ({ row }) => (
+          <span className="block leading-tight">
+            <span className="block text-[13px] font-semibold">{row.original.fullName}</span>
+            <span className="block text-xs text-muted-foreground">{row.original.email}</span>
+          </span>
+        ),
+        meta: meta((row) => `${row.fullName} (${row.email})`),
       },
-      { id: 'email', header: 'Email', accessorKey: 'email', meta: meta((row) => row.email) },
       {
         id: 'roles',
-        header: 'Roles',
-        cell: ({ row }) => row.original.roles.map((role) => ROLE_LABELS[role]).join(', '),
+        header: 'Role',
+        cell: ({ row }) => (
+          <span className="flex flex-wrap gap-1">
+            {row.original.roles.map((key) => (
+              <StatusBadge key={key} label={ROLE_SHORT_LABELS[key]} tone={ROLE_TONES[key]} />
+            ))}
+          </span>
+        ),
         meta: meta((row) => row.roles.join(' ')),
       },
       {
@@ -121,14 +148,18 @@ export function StaffPage() {
         meta: meta((row) => row.status),
       },
       {
-        id: 'createdAt',
-        header: 'Added',
-        cell: ({ row }) => formatDateTime(row.original.createdAt),
-        meta: meta((row) => row.createdAt),
+        id: 'lastActiveAt',
+        header: 'Last active',
+        cell: ({ row }) => (
+          <span className="text-muted-foreground">
+            {row.original.lastActiveAt ? formatDateTime(row.original.lastActiveAt) : 'Never'}
+          </span>
+        ),
+        meta: meta((row) => row.lastActiveAt ?? ''),
       },
       {
         id: 'actions',
-        header: 'Actions',
+        header: () => <span className="sr-only">Actions</span>,
         enableHiding: false,
         cell: ({ row }) => (
           <StaffActions
@@ -143,23 +174,33 @@ export function StaffPage() {
   );
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
-        title="Staff"
+        title="Staff & roles"
         breadcrumbs={[{ label: 'Staff & roles' }]}
         actions={
-          <>
-            <PermissionGate permissions={['roles:manage']}>
-              <Button variant="outline" asChild>
-                <Link to="/staff/roles">Role permissions</Link>
-              </Button>
-            </PermissionGate>
-            <PermissionGate permissions={['staff:manage', 'roles:manage']}>
-              <Button onClick={() => setIsCreating(true)}>Add staff member</Button>
-            </PermissionGate>
-          </>
+          <PermissionGate permissions={['staff:manage', 'roles:manage']}>
+            <Button className="h-12 font-semibold" onClick={() => setIsCreating(true)}>
+              Add staff member
+            </Button>
+          </PermissionGate>
         }
       />
+      <div role="radiogroup" aria-label="Filter by role" className="-mt-4 flex flex-wrap gap-2">
+        <ChoiceChip
+          label={everyone.data ? `All · ${everyone.data.total}` : 'All'}
+          isSelected={role === null}
+          onClick={() => (setRole(null), table.resetPage())}
+        />
+        {(roles.data ?? []).map((item) => (
+          <ChoiceChip
+            key={item.id}
+            label={`${ROLE_SHORT_LABELS[item.key]} · ${item.staffCount}`}
+            isSelected={role === item.key}
+            onClick={() => (setRole(item.key), table.resetPage())}
+          />
+        ))}
+      </div>
       <DataTable
         caption="Staff members"
         columns={columns}
@@ -197,6 +238,7 @@ export function StaffPage() {
           </>
         }
       />
+      {roles.data ? <PermissionMatrixCard roles={roles.data} /> : null}
       <CreateStaffDialog
         open={isCreating}
         onOpenChange={setIsCreating}
@@ -279,8 +321,8 @@ function StaffActions({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" aria-label={`Actions for ${staff.fullName}`}>
-          Actions
+        <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${staff.fullName}`}>
+          <MoreHorizontal aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

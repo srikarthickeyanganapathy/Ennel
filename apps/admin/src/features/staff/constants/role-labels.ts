@@ -8,6 +8,12 @@ export const ROLE_LABELS: Record<StaffRole, string> = {
   AUDITOR: 'Auditor',
 };
 
+/** For chips, where the long "counter/kitchen" note does not fit. */
+export const ROLE_SHORT_LABELS: Record<StaffRole, string> = {
+  ...ROLE_LABELS,
+  MESS_STAFF: 'Mess Staff',
+};
+
 const isStaffRole = (role: string): role is StaffRole => Object.hasOwn(ROLE_LABELS, role);
 
 /** Readable names for role keys from /auth/me, which arrive as plain strings. */

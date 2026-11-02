@@ -138,7 +138,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
       ) : rows.length === 0 ? (
         <EmptyState title={props.emptyTitle ?? 'Nothing to show'} />
       ) : (
-        <div className="overflow-x-auto rounded-md border border-border">
+        <div className="relative overflow-x-auto rounded-md border border-border">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{caption}</caption>
             <thead className="bg-surface">
