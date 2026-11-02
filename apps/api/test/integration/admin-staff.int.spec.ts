@@ -54,6 +54,20 @@ describe('staff and role management (Admin §A, §P)', () => {
     expect(login.accessToken).toBeTruthy();
   });
 
+  it('shows when staff were last active, and never for someone who has not signed in', async () => {
+    const created = await asAdmin('post', '/api/v1/admin/staff-users')
+      .send({ email: 'new.staff@ennel.test', fullName: 'New Staff', roles: ['WARDEN'] })
+      .expect(201);
+    const list = await asAdmin('get', '/api/v1/admin/staff-users').expect(200);
+    const row = (id: string) =>
+      list.body.items.find((item: { id: string }) => item.id === id) as { lastActiveAt: string };
+    expect(row(created.body.staff.id).lastActiveAt).toBeNull();
+    const signedIn = list.body.items.find(
+      (item: { email: string }) => item.email !== 'new.staff@ennel.test',
+    );
+    expect(signedIn.lastActiveAt).toEqual(expect.any(String));
+  });
+
   it('rejects a stale version and writes no audit entry for the failed change', async () => {
     const warden = await createStaff(ctx.prisma, ['WARDEN']);
     await asAdmin('patch', `/api/v1/admin/staff-users/${warden.id}`)

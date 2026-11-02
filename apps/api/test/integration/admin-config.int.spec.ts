@@ -53,6 +53,16 @@ describe('mess configuration, policy and menus (Admin §D, §E)', () => {
     await ctx.app.close();
   });
 
+  it('shows staff the live slot numbers for a meal, with the booking horizon on the date', async () => {
+    const today = toBusinessDate(new Date());
+    const path = '/api/v1/admin/mess-config/slot-availability';
+    const live = await as(managerToken, 'get', `${path}?date=${today}&meal=LUNCH`).expect(200);
+    expect(live.body.mealType).toBe('LUNCH');
+    expect(live.body.slots.length).toBeGreaterThan(0);
+    expect(live.body.slots[0]).toMatchObject({ bookedCount: 0, occupancyPct: 0 });
+    await as(managerToken, 'get', `${path}?date=2000-01-01&meal=LUNCH`).expect(422);
+  });
+
   it('adds, edits and validates slots, refusing overlap and Breakfast extras', async () => {
     const [breakfast, lunch] = await meals();
     if (!breakfast || !lunch) throw new Error('meals missing');

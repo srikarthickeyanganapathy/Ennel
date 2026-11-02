@@ -29,6 +29,8 @@ export const staffUserSchema = z.object({
   mustChangePassword: z.boolean(),
   totpEnabled: z.boolean(),
   lockedUntil: z.iso.datetime().nullable(),
+  /** When the newest session started; refreshing a session starts a new one. Null if never. */
+  lastActiveAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
   version: z.number().int(),
 });

@@ -51,6 +51,7 @@ export abstract class StaffUsersRepository {
 
 const STAFF_INCLUDE = {
   roles: { select: { role: { select: { key: true } } } },
+  sessions: { select: { createdAt: true }, orderBy: { createdAt: 'desc' }, take: 1 },
 } satisfies Prisma.StaffUserInclude;
 type StaffRow = Prisma.StaffUserGetPayload<{ include: typeof STAFF_INCLUDE }>;
 
@@ -64,6 +65,7 @@ function toStaffUser(row: StaffRow): StaffUser {
     mustChangePassword: row.mustChangePassword,
     totpEnabled: row.totpEnabled,
     lockedUntil: row.lockedUntil?.toISOString() ?? null,
+    lastActiveAt: row.sessions[0]?.createdAt.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     version: row.version,
   };

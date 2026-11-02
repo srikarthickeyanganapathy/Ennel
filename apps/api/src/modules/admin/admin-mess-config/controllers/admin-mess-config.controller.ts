@@ -23,6 +23,8 @@ import {
   ErrorCode,
   type MessPolicyView,
   reasonRequestSchema,
+  type SlotAvailabilityResponse,
+  slotAvailabilityQuerySchema,
   type SlotUsage,
   type Thresholds,
   thresholdsRequestSchema,
@@ -41,6 +43,7 @@ import {
 } from '../../../../common/decorators/current-staff.decorator';
 import { AppError } from '../../../../common/errors/app-error';
 import { ZodValidationPipe } from '../../../../common/pipes/zod-validation.pipe';
+import { GetSlotAvailabilityService } from '../../../slots/services/get-slot-availability.service';
 import { GetMessConfigService } from '../services/get-mess-config.service';
 import { PolicySettingsService } from '../services/policy-settings.service';
 import { SaveSlotService } from '../services/save-slot.service';
@@ -62,12 +65,23 @@ export class AdminMessConfigController {
     private readonly lifecycle: SlotLifecycleService,
     private readonly capacity: SlotCapacityService,
     private readonly policy: PolicySettingsService,
+    private readonly availability: GetSlotAvailabilityService,
   ) {}
 
   @Get('meals')
   @RequirePermissions('mess-config:read')
   async meals(): Promise<{ items: AdminMeal[] }> {
     return { items: await this.config.meals() };
+  }
+
+  /** The same live numbers students see (BR-CAP), for the Slots & capacity table. */
+  @Get('slot-availability')
+  @RequirePermissions('mess-config:read')
+  slotAvailability(
+    @Query(new ZodValidationPipe(slotAvailabilityQuerySchema))
+    query: z.output<typeof slotAvailabilityQuerySchema>,
+  ): Promise<SlotAvailabilityResponse> {
+    return this.availability.execute(query.date, query.meal);
   }
 
   @Patch('meals/:id')

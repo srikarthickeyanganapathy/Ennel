@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MessConfigModule } from '../../mess-config/mess-config.module';
+import { SlotsModule } from '../../slots/slots.module';
 import { AdminHostelsController } from './controllers/admin-hostels.controller';
 import { AdminMessConfigController } from './controllers/admin-mess-config.controller';
 import { AdminPolicyController } from './controllers/admin-policy.controller';
@@ -15,7 +16,7 @@ import { UpdateMealService } from './services/update-meal.service';
 
 /** Mess configuration, hostels and policy settings (Admin §D). */
 @Module({
-  imports: [MessConfigModule],
+  imports: [MessConfigModule, SlotsModule],
   controllers: [AdminMessConfigController, AdminPolicyController, AdminHostelsController],
   providers: [
     AdminMessConfigRepository,
