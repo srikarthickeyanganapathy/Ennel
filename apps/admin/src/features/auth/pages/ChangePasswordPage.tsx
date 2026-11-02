@@ -7,10 +7,11 @@ import { toast } from 'sonner';
 import { type z } from 'zod';
 import { ApiError, errorMessage } from '@/shared/api-client/api-error';
 import { Button } from '@/shared/components/ui/button';
-import { Card } from '@/shared/components/ui/card';
-import { Field, Input } from '@/shared/components/ui/form-controls';
+import { Field } from '@/shared/components/ui/form-controls';
 import { changePassword } from '../api/auth-api';
 import { useAuth } from '../auth-context';
+import { AuthCard } from '../components/AuthCard';
+import { PasswordInput } from '../components/PasswordInput';
 
 type Input = z.input<typeof changePasswordRequestSchema>;
 type Output = z.output<typeof changePasswordRequestSchema>;
@@ -38,72 +39,72 @@ export function ChangePasswordPage() {
   });
 
   return (
-    <div className="mx-auto max-w-md py-10">
-      <Card>
-        <h1 className="text-xl font-semibold">Change your password</h1>
-        {me?.mustChangePassword ? (
-          <p className="mt-2 text-sm text-muted-foreground">
-            Choose your own password before continuing.
-          </p>
-        ) : null}
-        {save.error && !(save.error instanceof ApiError && save.error.fieldIssues.length > 0) ? (
-          <p role="alert" className="mt-4 text-sm text-danger">
-            {errorMessage(save.error)}
-          </p>
-        ) : null}
-        <form
-          className="mt-6 space-y-4"
-          onSubmit={form.handleSubmit((values) => save.mutate(values))}
-          noValidate
+    <AuthCard
+      title="Change your password"
+      description={
+        me?.mustChangePassword ? 'Choose your own password before continuing.' : undefined
+      }
+    >
+      {save.error && !(save.error instanceof ApiError && save.error.fieldIssues.length > 0) ? (
+        <p
+          role="alert"
+          className="rounded-md border border-danger/30 bg-danger-surface p-3 text-sm text-danger"
         >
-          <Field
-            label="Current password"
-            htmlFor="currentPassword"
-            error={form.formState.errors.currentPassword?.message}
-          >
-            <Input
-              id="currentPassword"
-              type="password"
-              autoComplete="current-password"
-              {...form.register('currentPassword')}
-            />
-          </Field>
-          <Field
-            label="New password"
-            htmlFor="newPassword"
-            hint={`At least ${STAFF_PASSWORD_MIN_LENGTH} characters, not your email`}
-            error={form.formState.errors.newPassword?.message}
-          >
-            <Input
-              id="newPassword"
-              type="password"
-              autoComplete="new-password"
-              {...form.register('newPassword')}
-            />
-          </Field>
-          <Field
-            label="Confirm new password"
-            htmlFor="confirmPassword"
-            error={form.formState.errors.confirmPassword?.message}
-          >
-            <Input
-              id="confirmPassword"
-              type="password"
-              autoComplete="new-password"
-              {...form.register('confirmPassword')}
-            />
-          </Field>
-          <Button type="submit" className="w-full" disabled={save.isPending}>
-            {save.isPending ? 'Saving…' : 'Change password'}
+          {errorMessage(save.error)}
+        </p>
+      ) : null}
+      <form
+        className="flex flex-col gap-5"
+        onSubmit={form.handleSubmit((values) => save.mutate(values))}
+        noValidate
+      >
+        <Field
+          label="Current password"
+          htmlFor="currentPassword"
+          error={form.formState.errors.currentPassword?.message}
+        >
+          <PasswordInput
+            id="currentPassword"
+            subject="the current password"
+            autoComplete="current-password"
+            {...form.register('currentPassword')}
+          />
+        </Field>
+        <Field
+          label="New password"
+          htmlFor="newPassword"
+          hint={`At least ${STAFF_PASSWORD_MIN_LENGTH} characters, not your email`}
+          error={form.formState.errors.newPassword?.message}
+        >
+          <PasswordInput
+            id="newPassword"
+            subject="the new password"
+            autoComplete="new-password"
+            {...form.register('newPassword')}
+          />
+        </Field>
+        <Field
+          label="Confirm new password"
+          htmlFor="confirmPassword"
+          error={form.formState.errors.confirmPassword?.message}
+        >
+          <PasswordInput
+            id="confirmPassword"
+            subject="the confirmation"
+            autoComplete="new-password"
+            {...form.register('confirmPassword')}
+          />
+        </Field>
+        <Button type="submit" className="h-12 w-full font-semibold" disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Change password'}
+        </Button>
+        {/* This page sits outside the app layout; a voluntary change needs a way back. */}
+        {me?.mustChangePassword ? null : (
+          <Button variant="ghost" className="w-full font-semibold text-primary" asChild>
+            <Link to="/account">Cancel</Link>
           </Button>
-          {/* This page sits outside the app layout; a voluntary change needs a way back. */}
-          {me?.mustChangePassword ? null : (
-            <Button variant="ghost" className="w-full" asChild>
-              <Link to="/account">Cancel</Link>
-            </Button>
-          )}
-        </form>
-      </Card>
-    </div>
+        )}
+      </form>
+    </AuthCard>
   );
 }

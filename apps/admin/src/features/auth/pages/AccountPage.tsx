@@ -31,53 +31,58 @@ export function AccountPage() {
   });
 
   return (
-    <div className="max-w-3xl space-y-6">
+    <div>
       <PageHeader title="Account and security" breadcrumbs={[{ label: 'Account' }]} />
-      <Card>
-        <CardHeader
-          title={me?.fullName ?? ''}
-          description={me?.email}
-          actions={
-            <Button variant="outline" asChild>
-              <Link to="/change-password">Change password</Link>
-            </Button>
-          }
-        />
-        <p className="text-sm text-muted-foreground">
-          Roles: {formatRoles(me?.roles ?? []) || 'none'}
-        </p>
-      </Card>
-      <TotpCard isEnabled={me?.totpEnabled ?? false} onEnabled={reloadMe} />
-      <Card>
-        <CardHeader
-          title="Signed-in devices"
-          actions={
-            <Button variant="destructive" onClick={() => setIsConfirmingLogout(true)}>
-              Log out everywhere
-            </Button>
-          }
-        />
-        <QueryBoundary
-          isLoading={sessions.isLoading}
-          error={sessions.error}
-          onRetry={() => void sessions.refetch()}
-        >
-          <ul className="divide-y divide-border text-sm">
-            {(sessions.data ?? []).map((session) => (
-              <li
-                key={session.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-2"
-              >
-                <span className="max-w-md truncate">{session.userAgent ?? 'Unknown device'}</span>
-                <span className="text-muted-foreground">
-                  Signed in {formatDateTime(session.createdAt)}{' '}
+      <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-2">
+        <div className="flex min-w-0 flex-col gap-6">
+          <Card>
+            <CardHeader
+              title={me?.fullName ?? ''}
+              description={me?.email}
+              actions={
+                <Button variant="outline" asChild>
+                  <Link to="/change-password">Change password</Link>
+                </Button>
+              }
+            />
+            <p className="text-sm text-muted-foreground">
+              Roles: {formatRoles(me?.roles ?? []) || 'none'}
+            </p>
+          </Card>
+          <TotpCard isEnabled={me?.totpEnabled ?? false} onEnabled={reloadMe} />
+        </div>
+        <Card>
+          <CardHeader
+            title="Signed-in devices"
+            actions={
+              <Button variant="dangerOutline" onClick={() => setIsConfirmingLogout(true)}>
+                Log out everywhere
+              </Button>
+            }
+          />
+          <QueryBoundary
+            isLoading={sessions.isLoading}
+            error={sessions.error}
+            onRetry={() => void sessions.refetch()}
+          >
+            <ul className="divide-y divide-border text-sm">
+              {(sessions.data ?? []).map((session) => (
+                <li key={session.id} className="flex items-center gap-2.5 py-2.5">
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block truncate text-[13px] font-semibold">
+                      {session.userAgent ?? 'Unknown device'}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      Signed in {formatDateTime(session.createdAt)}
+                    </span>
+                  </span>
                   {session.isCurrent ? <StatusBadge label="This device" tone="success" /> : null}
-                </span>
-              </li>
-            ))}
-          </ul>
-        </QueryBoundary>
-      </Card>
+                </li>
+              ))}
+            </ul>
+          </QueryBoundary>
+        </Card>
+      </div>
       <Dialog open={isConfirmingLogout} onOpenChange={setIsConfirmingLogout}>
         <DialogContent
           title="Log out everywhere?"
