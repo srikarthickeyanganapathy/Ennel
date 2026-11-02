@@ -11,6 +11,8 @@ interface ReasonDialogProps {
   title: string;
   description?: string;
   confirmLabel: string;
+  /** Starts the field filled in, e.g. from a note already typed on the page. */
+  initialReason?: string;
   isDestructive?: boolean;
   isPending?: boolean;
   error?: unknown;
@@ -29,6 +31,7 @@ export function ReasonDialog({
   title,
   description,
   confirmLabel,
+  initialReason = '',
   isDestructive = false,
   isPending = false,
   error,
@@ -41,10 +44,10 @@ export function ReasonDialog({
 
   useEffect(() => {
     if (open) {
-      setReason('');
+      setReason(initialReason);
       setProblem(null);
     }
-  }, [open]);
+  }, [open, initialReason]);
 
   const submit = () => {
     const result = overrideReasonSchema.safeParse(reason);

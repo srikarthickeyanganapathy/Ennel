@@ -8,6 +8,8 @@ import { reEnableDefaultBooking, rejectAppeal, resetCount, reviewHeld } from '..
 export type NoShowAction = {
   kind: 'reject' | 'confirm' | 'dismiss' | 'reset' | 'reEnable';
   event: AdminNoShowEvent;
+  /** Reject only: the note typed on the appeal card, as the starting reason. */
+  note?: string;
 };
 
 const MEAL_NAMES = { BREAKFAST: 'Breakfast', LUNCH: 'Lunch', DINNER: 'Dinner' } as const;
@@ -86,6 +88,7 @@ export function NoShowActionDialog({
       title={text.title}
       description={`${event.student.fullName}, ${MEAL_NAMES[event.mealType]} on ${formatBusinessDate(event.date)}. ${text.description}`}
       confirmLabel={text.confirm}
+      initialReason={action.note}
       isDestructive={action.kind === 'reject' || action.kind === 'reset'}
       isPending={mutation.isPending}
       error={mutation.error}

@@ -5,6 +5,8 @@ import {
   type MealType,
   type NoShowActionResult,
   noShowActionResultSchema,
+  type NoShowAtRisk,
+  noShowAtRiskSchema,
 } from '@ennel/shared';
 import { apiRequest } from '@/shared/api-client/api-client';
 
@@ -12,10 +14,14 @@ import { apiRequest } from '@/shared/api-client/api-client';
 export const listNoShows = (query: AdminNoShowListQuery): Promise<AdminNoShowList> =>
   apiRequest('/no-shows', { query: { ...query }, schema: adminNoShowListResponseSchema });
 
+export const getAtRisk = (): Promise<NoShowAtRisk> =>
+  apiRequest('/no-shows/at-risk', { schema: noShowAtRiskSchema });
+
 const post = (path: string, body: object): Promise<NoShowActionResult> =>
   apiRequest(path, { method: 'POST', body, schema: noShowActionResultSchema });
 
-export const approveAppeal = (appealId: string) => post(`/no-show-appeals/${appealId}/approve`, {});
+export const approveAppeal = (appealId: string, reason?: string) =>
+  post(`/no-show-appeals/${appealId}/approve`, reason ? { reason } : {});
 
 export const rejectAppeal = (appealId: string, reason: string) =>
   post(`/no-show-appeals/${appealId}/reject`, { reason });

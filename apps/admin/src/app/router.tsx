@@ -1,4 +1,4 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { AuditLogPage } from '@/features/audit-log/pages/AuditLogPage';
 import { AccountPage } from '@/features/auth/pages/AccountPage';
 import { ChangePasswordPage } from '@/features/auth/pages/ChangePasswordPage';
@@ -18,7 +18,6 @@ import { BookingsPage } from '@/features/bookings/pages/BookingsPage';
 import { ClosuresPage } from '@/features/closures/pages/ClosuresPage';
 import { AttendancePage } from '@/features/attendance/pages/AttendancePage';
 import { LeavesPage } from '@/features/leaves/pages/LeavesPage';
-import { NoShowsPage } from '@/features/no-shows/pages/NoShowsPage';
 import { ComplaintsPage } from '@/features/complaints/pages/ComplaintsPage';
 import { AnnouncementsPage } from '@/features/announcements/pages/AnnouncementsPage';
 import { RequireAuth, RequirePermission } from './route-guards';
@@ -46,7 +45,7 @@ export const router = createBrowserRouter([
           {
             path: 'attendance',
             element: (
-              <RequirePermission anyOf={['attendance:read']}>
+              <RequirePermission anyOf={['attendance:read', 'no-shows:read']}>
                 <AttendancePage />
               </RequirePermission>
             ),
@@ -61,11 +60,8 @@ export const router = createBrowserRouter([
           },
           {
             path: 'no-shows',
-            element: (
-              <RequirePermission anyOf={['no-shows:read']}>
-                <NoShowsPage />
-              </RequirePermission>
-            ),
+            // No-shows moved into the Attendance page; old links keep working.
+            element: <Navigate to="/attendance?tab=no-shows" replace />,
           },
           {
             path: 'complaints',

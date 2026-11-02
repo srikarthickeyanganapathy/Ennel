@@ -2,140 +2,219 @@ import {
   type AttendanceCounter,
   type AttendanceWindowQuery,
   MEAL_TYPE_ORDER,
-  type MealType,
+  type NoShowAtRisk,
 } from '@ennel/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+import { useState } from 'react';
+import { useSearchParams } from 'react-router';
+import { usePermissions } from '@/features/auth/auth-context';
+import { AppealQueue, APPEALS_QUERY } from '@/features/no-shows/components/AppealQueue';
+import { AtRiskCard } from '@/features/no-shows/components/AtRiskCard';
+import { HeldQueue } from '@/features/no-shows/components/HeldQueue';
+import {
+  type NoShowAction,
+  NoShowActionDialog,
+} from '@/features/no-shows/components/NoShowActionDialog';
+import { NoShowsTable } from '@/features/no-shows/components/NoShowsTable';
+import { getAtRisk } from '@/features/no-shows/api/no-shows-api';
+import { ChoiceChip } from '@/shared/components/ChoiceChip';
+import { DatePickerButton } from '@/shared/components/DatePickerButton';
+import { MealSwitcher } from '@/shared/components/MealSwitcher';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { QueryBoundary } from '@/shared/components/QueryStates';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 import { Card, CardHeader } from '@/shared/components/ui/card';
-import { Input, Label, Select } from '@/shared/components/ui/form-controls';
 import { PageHeader } from '@/shared/layout/PageHeader';
-import { formatDateTime } from '@/shared/lib/format';
+import { formatBusinessDate, formatDateTime, formatTime } from '@/shared/lib/format';
 import { getActiveWindow, getCounter } from '../api/attendance-api';
 import { AttendanceImportCard } from '../components/AttendanceImportCard';
 import { CounterSearch } from '../components/CounterSearch';
-import { OutageControl } from '../components/OutageControl';
+import { OutageCard } from '../components/OutageCard';
+import { SlotCountsTable } from '../components/SlotCountsTable';
 import { MEAL_NAMES, PHASE_TEXT, SOURCE_TEXT } from '../constants/attendance-labels';
 
 /** Live counts refresh this often while the page is open (Admin §I "live counter"). */
 const LIVE_REFRESH_MS = 15_000;
+const MEALS = MEAL_TYPE_ORDER.map((mealType) => ({ mealType, mealName: MEAL_NAMES[mealType] }));
 
-/** Admin §I: the attendance counter for one meal window. */
+type Tab = 'today' | 'no-shows' | 'appeals';
+
+/** Figma "Admin — Attendance & No-shows": the live counter (Admin §I) and No-show review (§J). */
 export function AttendancePage() {
-  const active = useQuery({ queryKey: ['attendance-active'], queryFn: getActiveWindow });
+  const can = usePermissions();
+  const canCount = can('attendance:read');
+  const canReview = can('no-shows:read');
+  const [params, setParams] = useSearchParams();
+  const requested = params.get('tab');
+  // Counter staff cannot read No-shows, and a custom role could read only No-shows.
+  const tab: Tab =
+    canReview && (requested === 'no-shows' || requested === 'appeals' || !canCount)
+      ? requested === 'appeals'
+        ? 'appeals'
+        : 'no-shows'
+      : 'today';
+  const [picked, setPicked] = useState<AttendanceWindowQuery | null>(null);
+  const [action, setAction] = useState<NoShowAction | null>(null);
+  const active = useQuery({
+    queryKey: ['attendance-active'],
+    queryFn: getActiveWindow,
+    enabled: canCount,
+  });
+  const atRisk = useQuery({
+    queryKey: ['admin-no-shows', 'at-risk'],
+    queryFn: getAtRisk,
+    enabled: canReview,
+  });
+  const appeals = useQuery({ ...APPEALS_QUERY, enabled: canReview });
+  const target = picked ?? active.data ?? null;
+  const windowDays = atRisk.data?.windowDays ?? null;
+  const toReview = appeals.data ? appeals.data.pendingAppeals + appeals.data.heldForReview : null;
+
   return (
     <div>
       <PageHeader
-        title="Attendance"
+        title="Attendance & No-shows"
         breadcrumbs={[{ label: 'Attendance' }]}
-        description="Mark students present at the counter and follow attended vs booked meals."
+        description={
+          windowDays
+            ? `Live counts for the meal window · rolling ${windowDays}-day No-shows`
+            : 'Live counts for the meal window'
+        }
+        actions={
+          tab === 'today' && target ? (
+            <>
+              <DatePickerButton
+                value={target.date}
+                text={formatBusinessDate(target.date, 'EEE, d MMM yyyy')}
+                label="Attendance date"
+                onChange={(date) => date && setPicked({ ...target, date })}
+              />
+              <MealSwitcher
+                meals={MEALS}
+                selected={target.mealType}
+                onChange={(mealType) => setPicked({ ...target, mealType })}
+              />
+            </>
+          ) : null
+        }
       />
-      <QueryBoundary
-        isLoading={active.isLoading}
-        error={active.error}
-        onRetry={() => void active.refetch()}
-      >
-        {active.data ? <AttendanceWindow initial={active.data} /> : null}
-      </QueryBoundary>
+      {canReview ? (
+        <div role="radiogroup" aria-label="View" className="mb-6 flex flex-wrap gap-2">
+          {canCount ? (
+            <ChoiceChip
+              label="Today"
+              isSelected={tab === 'today'}
+              onClick={() => setParams({}, { replace: true })}
+            />
+          ) : null}
+          <ChoiceChip
+            label={windowDays ? `No-shows · ${windowDays} days` : 'No-shows'}
+            isSelected={tab === 'no-shows'}
+            onClick={() => setParams({ tab: 'no-shows' }, { replace: true })}
+          />
+          <ChoiceChip
+            label={toReview === null ? 'Appeals' : `Appeals · ${toReview}`}
+            isSelected={tab === 'appeals'}
+            onClick={() => setParams({ tab: 'appeals' }, { replace: true })}
+          />
+        </div>
+      ) : null}
+      {tab === 'today' ? (
+        <QueryBoundary
+          isLoading={active.isLoading}
+          error={active.error}
+          onRetry={() => void active.refetch()}
+        >
+          {target ? (
+            <TodayView target={target} atRisk={atRisk.data ?? null} onAction={setAction} />
+          ) : null}
+        </QueryBoundary>
+      ) : null}
+      {tab === 'no-shows' && windowDays ? (
+        <NoShowsTable windowDays={windowDays} onAction={setAction} />
+      ) : null}
+      {tab === 'appeals' ? (
+        <div className="flex flex-col gap-4">
+          <AppealQueue onAction={setAction} />
+          <HeldQueue onAction={setAction} />
+        </div>
+      ) : null}
+      <NoShowActionDialog
+        key={action ? `${action.kind}-${action.event.id}` : 'none'}
+        action={action}
+        onClose={() => setAction(null)}
+      />
     </div>
   );
 }
 
-function AttendanceWindow({ initial }: { initial: AttendanceWindowQuery }) {
-  const id = useId();
-  const [target, setTarget] = useState(initial);
+function TodayView({
+  target,
+  atRisk,
+  onAction,
+}: {
+  target: AttendanceWindowQuery;
+  atRisk: NoShowAtRisk | null;
+  onAction: (action: NoShowAction) => void;
+}) {
   const counter = useQuery({
     queryKey: ['attendance-counter', target],
     queryFn: () => getCounter(target),
     refetchInterval: LIVE_REFRESH_MS,
   });
-
   return (
-    <div className="space-y-4">
-      <OutageControl />
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1.5">
-          <Label htmlFor={`${id}-date`}>Date</Label>
-          <Input
-            id={`${id}-date`}
-            type="date"
-            value={target.date}
-            onChange={(event) =>
-              event.target.value && setTarget({ ...target, date: event.target.value })
-            }
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor={`${id}-meal`}>Meal</Label>
-          <Select
-            id={`${id}-meal`}
-            value={target.mealType}
-            onChange={(event) => setTarget({ ...target, mealType: event.target.value as MealType })}
-          >
-            {MEAL_TYPE_ORDER.map((meal) => (
-              <option key={meal} value={meal}>
-                {MEAL_NAMES[meal]}
-              </option>
-            ))}
-          </Select>
-        </div>
+    <div className="grid grid-cols-[minmax(0,1fr)] items-start gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="flex min-w-0 flex-col gap-6">
+        <CounterSearch target={target} />
+        <QueryBoundary
+          isLoading={counter.isLoading}
+          error={counter.error}
+          onRetry={() => void counter.refetch()}
+        >
+          {counter.data ? <CounterView counter={counter.data} /> : null}
+        </QueryBoundary>
+        <PermissionGate permissions={['no-shows:read']}>
+          <section className="flex flex-col gap-4">
+            <h2 className="text-base font-semibold">No-show appeals</h2>
+            <AppealQueue onAction={onAction} />
+          </section>
+        </PermissionGate>
       </div>
-      <QueryBoundary
-        isLoading={counter.isLoading}
-        error={counter.error}
-        onRetry={() => void counter.refetch()}
-      >
-        {counter.data ? <CounterView counter={counter.data} /> : null}
-      </QueryBoundary>
-      <CounterSearch target={target} />
-      <PermissionGate permissions={['attendance:import']}>
-        <AttendanceImportCard target={target} />
-      </PermissionGate>
+      <div className="flex min-w-0 flex-col gap-6">
+        <OutageCard />
+        {atRisk ? <AtRiskCard atRisk={atRisk} /> : null}
+        <PermissionGate permissions={['attendance:import']}>
+          <AttendanceImportCard target={target} />
+        </PermissionGate>
+      </div>
     </div>
   );
 }
 
 function CounterView({ counter }: { counter: AttendanceCounter }) {
-  const phaseTone = counter.phase === 'OPEN' ? 'success' : 'neutral';
+  const { totals } = counter;
   return (
-    <Card>
-      <CardHeader
-        title={`${counter.mealName}: ${counter.totals.attended} of ${counter.totals.booked} attended`}
-        description={`${formatDateTime(counter.opensAt)} – ${formatDateTime(counter.closesAt)}${counter.totals.noShow > 0 ? ` · ${counter.totals.noShow} No-shows` : ''}`}
-        actions={
+    <>
+      <section className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="text-base font-semibold">{counter.mealName} · by slot</h2>
+            <p className="text-xs text-muted-foreground">
+              {totals.attended} of {totals.booked} attended
+              {totals.noShow > 0 ? ` · ${totals.noShow} No-shows` : ''} ·{' '}
+              {formatTime(counter.opensAt)} – {formatTime(counter.closesAt)}
+            </p>
+          </div>
           <StatusBadge
             label={counter.isFinalised ? 'Finalised' : PHASE_TEXT[counter.phase]}
-            tone={phaseTone}
+            tone={counter.phase === 'OPEN' ? 'success' : 'neutral'}
           />
-        }
-      />
-      {counter.slots.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No bookings for this meal.</p>
-      ) : (
-        <ul className="space-y-2">
-          {counter.slots.map((slot) => {
-            const percent = slot.booked === 0 ? 0 : Math.round((slot.attended / slot.booked) * 100);
-            return (
-              <li key={slot.slotId}>
-                <div className="flex justify-between text-sm">
-                  <span>{slot.label}</span>
-                  <span>
-                    {slot.attended} / {slot.booked} attended ({percent}%)
-                  </span>
-                </div>
-                <div className="mt-1 h-2 rounded-full bg-surface" aria-hidden="true">
-                  <div className="h-2 rounded-full bg-primary" style={{ width: `${percent}%` }} />
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+        </div>
+        <SlotCountsTable counter={counter} />
+      </section>
       {counter.recent.length > 0 ? (
-        <div className="mt-4">
-          <h3 className="mb-1 text-sm font-semibold">Recently recorded</h3>
+        <Card>
+          <CardHeader title="Recently recorded" />
           <ul className="divide-y divide-border text-sm">
             {counter.recent.map((mark) => (
               <li
@@ -154,8 +233,8 @@ function CounterView({ counter }: { counter: AttendanceCounter }) {
               </li>
             ))}
           </ul>
-        </div>
+        </Card>
       ) : null}
-    </Card>
+    </>
   );
 }

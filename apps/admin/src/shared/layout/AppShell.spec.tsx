@@ -70,7 +70,7 @@ describe('AppShell', () => {
       '/leaves',
     );
     expect(within(nav).getByRole('link', { name: 'Complaints, 3 waiting' })).toBeInTheDocument();
-    expect(within(nav).getByRole('link', { name: 'No-shows, 2 waiting' })).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Attendance, 2 waiting' })).toBeInTheDocument();
     expect(within(nav).getByRole('link', { name: 'Announcements' })).toBeInTheDocument();
     expect(within(nav).getByText('Admin')).toBeInTheDocument();
     auth = mockAuth([...DEFAULT_ROLE_PERMISSIONS.WARDEN]);

@@ -10,7 +10,6 @@ import {
   ScrollText,
   Settings,
   Shield,
-  UserX,
   Users,
   Utensils,
 } from 'lucide-react';
@@ -34,7 +33,7 @@ export interface NavItem {
 /*
  * Icons follow the Figma sidebar. Where the design has an icon, the installed Lucide icon with the
  * same shape is used; Attendance and Announcements have no exact Lucide match in this version, so
- * the Figma files are used. Pages the design does not show (Bookings, No-shows, Closures, Hostels,
+ * the Figma files are used. Pages the design does not show (Bookings, Closures, Hostels,
  * Audit log) use Lucide icons in the same style. Later phases add their pages (forecasting, reports,
  * health).
  */
@@ -56,9 +55,10 @@ export const NAV_ITEMS: NavItem[] = [
   {
     label: 'Attendance',
     path: '/attendance',
-    anyOf: ['attendance:read'],
+    anyOf: ['attendance:read', 'no-shows:read'],
     icon: maskIcon(attendanceIcon),
     section: 'main',
+    badge: (pending) => pending.noShowAppeals + pending.attendanceIssues,
   },
   {
     label: 'Leaves',
@@ -67,14 +67,6 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Briefcase,
     section: 'main',
     badge: (pending) => pending.leaveApprovals,
-  },
-  {
-    label: 'No-shows',
-    path: '/no-shows',
-    anyOf: ['no-shows:read'],
-    icon: UserX,
-    section: 'main',
-    badge: (pending) => pending.noShowAppeals + pending.attendanceIssues,
   },
   {
     label: 'Complaints',
@@ -98,7 +90,7 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Users,
     section: 'main',
   },
-  { label: 'Menus', path: '/menus', anyOf: ['menus:read'], icon: Utensils, section: 'main' },
+  { label: 'Menu', path: '/menus', anyOf: ['menus:read'], icon: Utensils, section: 'main' },
   {
     label: 'Closures',
     path: '/closures',
