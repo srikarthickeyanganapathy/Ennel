@@ -108,7 +108,7 @@ describe('LeavesPage (Admin §K, Figma "Admin — Leave requests")', () => {
       await screen.findByRole('gridcell', { name: 'Sat 2 May: 12 students away' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Leave needs approval')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Change it on the Policy page' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Change it in Settings & rules' })).toHaveAttribute(
       'href',
       '/policy',
     );

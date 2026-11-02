@@ -12,13 +12,13 @@ describe('getVisibleNavItems (Admin UX: permission-aware sidebar)', () => {
       'Attendance',
       'Menu',
       'Closures',
-      'Mess configuration',
+      'Slots & capacity',
       'Hostels',
     ]);
   });
 
   it('shows the Auditor policy and the audit log but not operations', () => {
-    expect(labelsFor(StaffRole.AUDITOR)).toEqual(['Policy', 'Audit log']);
+    expect(labelsFor(StaffRole.AUDITOR)).toEqual(['Settings & rules', 'Audit log']);
   });
 
   it('shows Wardens students but not bookings or staff management', () => {

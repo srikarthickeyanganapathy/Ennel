@@ -11,9 +11,8 @@ import { Dialog, DialogContent, DialogFooter } from '@/shared/components/ui/dial
 import { Field, Input } from '@/shared/components/ui/form-controls';
 import { formatMinutes, minuteToTimeInput, timeInputToMinute } from '@/shared/lib/format';
 import { updateMeal } from '../api/mess-config-api';
-import { SlotsTable } from './SlotsTable';
 
-/** One meal: serving window plus its slots (Admin §D). */
+/** One meal's serving window (Admin §D). */
 export function MealWindowCard({ meal }: { meal: AdminMeal }) {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -46,7 +45,7 @@ export function MealWindowCard({ meal }: { meal: AdminMeal }) {
   return (
     <Card>
       <CardHeader
-        title={meal.displayName}
+        title={`${meal.displayName} serving window`}
         description={`Serving ${formatMinutes(meal.serviceStartMinute)} - ${formatMinutes(meal.serviceEndMinute)} · attendance closes ${meal.attendanceGraceMinutes} min after service ends`}
         actions={
           <>
@@ -68,7 +67,6 @@ export function MealWindowCard({ meal }: { meal: AdminMeal }) {
           Breakfast has one serving window; its slot follows the window.
         </p>
       ) : null}
-      <SlotsTable meal={meal} />
       <Dialog open={isEditing} onOpenChange={setIsEditing}>
         <DialogContent
           title={`Edit ${meal.displayName}`}

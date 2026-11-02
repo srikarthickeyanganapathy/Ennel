@@ -13,10 +13,13 @@ import {
   type CreateSlotRequest,
   type MessPolicyView,
   messPolicySchema,
+  type MealType,
   type Paginated,
   paginatedResponseSchema,
   type PolicyHistoryItem,
   policyHistoryItemSchema,
+  type SlotAvailabilityResponse,
+  slotAvailabilityResponseSchema,
   type SlotUsage,
   slotUsageSchema,
   type Thresholds,
@@ -38,6 +41,15 @@ export const listMeals = async (): Promise<AdminMeal[]> =>
       schema: z.object({ items: z.array(adminMealSchema) }),
     })
   ).items;
+
+export const getSlotAvailability = (
+  date: string,
+  meal: MealType,
+): Promise<SlotAvailabilityResponse> =>
+  apiRequest('/mess-config/slot-availability', {
+    query: { date, meal },
+    schema: slotAvailabilityResponseSchema,
+  });
 
 export const updateMeal = (id: string, body: UpdateMealRequest): Promise<AdminMeal> =>
   apiRequest(`/mess-config/meals/${id}`, { method: 'PATCH', body, schema: adminMealSchema });

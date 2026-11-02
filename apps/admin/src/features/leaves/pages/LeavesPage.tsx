@@ -483,7 +483,7 @@ function ApprovalRuleCard({ requiresApproval }: { requiresApproval: boolean | nu
             fallback={<span>Ask a manager to change it.</span>}
           >
             <Link to="/policy" className="font-semibold text-primary hover:underline">
-              Change it on the Policy page
+              Change it in Settings & rules
             </Link>
           </PermissionGate>
           ; every change is audited.

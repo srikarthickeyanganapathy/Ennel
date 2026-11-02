@@ -44,7 +44,47 @@ const POLICY: MessPolicyView = {
   updatedByName: 'Admin',
 };
 
-describe('PolicyPage (Admin §D, rule 8)', () => {
+describe('PolicyPage (Admin §D, rule 8, Figma "Admin — Settings & rules")', () => {
+  it('says what a value does as it is typed, and Discard puts it back', async () => {
+    vi.mocked(getPolicy).mockResolvedValue(POLICY);
+    vi.mocked(listPolicyHistory).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
+    renderWithProviders(<PolicyPage />);
+
+    const cancel = await screen.findByLabelText('Cancel deadline');
+    expect(
+      screen.getByText('Students can cancel until 1 hour before their slot.'),
+    ).toBeInTheDocument();
+    fireEvent.change(cancel, { target: { value: '90' } });
+    expect(
+      screen.getByText('Students can cancel until 90 minutes before their slot.'),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
+    expect(cancel).toHaveValue(60);
+    expect(screen.getByRole('button', { name: 'Save rules' })).toBeDisabled();
+  });
+
+  it('toggles a rule with its switch and sends only that field', async () => {
+    vi.mocked(getPolicy).mockResolvedValue(POLICY);
+    vi.mocked(listPolicyHistory).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
+    vi.mocked(updatePolicy).mockResolvedValue({ ...POLICY, leaveRequiresApproval: true });
+    renderWithProviders(<PolicyPage />);
+
+    fireEvent.click(await screen.findByRole('switch', { name: 'Leave requires staff approval' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save 1 change' }));
+    const dialog = await screen.findByRole('dialog');
+    fireEvent.change(within(dialog).getByLabelText('Reason (recorded in the audit log)'), {
+      target: { value: 'Warden request' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save rules' }));
+    await waitFor(() =>
+      expect(updatePolicy).toHaveBeenCalledWith({
+        leaveRequiresApproval: true,
+        reason: 'Warden request',
+        version: 4,
+      }),
+    );
+  });
+
   it('only allows saving after a change and sends just the changed fields', async () => {
     vi.mocked(getPolicy).mockResolvedValue(POLICY);
     vi.mocked(listPolicyHistory).mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 20 });
@@ -52,7 +92,7 @@ describe('PolicyPage (Admin §D, rule 8)', () => {
     renderWithProviders(<PolicyPage />);
 
     const horizon = await screen.findByLabelText(/Booking horizon/);
-    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Save rules' })).toBeDisabled();
 
     fireEvent.change(horizon, { target: { value: '' } });
     expect(horizon).toHaveValue(null);
@@ -64,7 +104,7 @@ describe('PolicyPage (Admin §D, rule 8)', () => {
     fireEvent.change(within(dialog).getByLabelText('Reason (recorded in the audit log)'), {
       target: { value: 'Longer horizon for exams' },
     });
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Save policy' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Save rules' }));
 
     await waitFor(() =>
       expect(updatePolicy).toHaveBeenCalledWith({

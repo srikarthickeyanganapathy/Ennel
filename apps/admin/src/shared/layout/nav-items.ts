@@ -99,7 +99,7 @@ export const NAV_ITEMS: NavItem[] = [
     section: 'main',
   },
   {
-    label: 'Mess configuration',
+    label: 'Slots & capacity',
     path: '/mess-config',
     anyOf: ['mess-config:read'],
     icon: Rows3,
@@ -112,7 +112,13 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Building2,
     section: 'admin',
   },
-  { label: 'Policy', path: '/policy', anyOf: ['policy:read'], icon: Settings, section: 'admin' },
+  {
+    label: 'Settings & rules',
+    path: '/policy',
+    anyOf: ['policy:read'],
+    icon: Settings,
+    section: 'admin',
+  },
   {
     label: 'Staff & roles',
     path: '/staff',
