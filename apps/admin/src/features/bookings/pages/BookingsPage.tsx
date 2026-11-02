@@ -2,12 +2,15 @@ import {
   type AdminBooking,
   type AdminBookingListQuery,
   type BulkBookingAction,
-  type MealType,
+  MEAL_TYPE_ORDER,
 } from '@ennel/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { type ColumnDef, type RowSelectionState } from '@tanstack/react-table';
+import { MoreHorizontal } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { ChoiceChip } from '@/shared/components/ChoiceChip';
 import { DataTable, type DataTableColumnMeta } from '@/shared/components/DataTable';
+import { DatePickerButton } from '@/shared/components/DatePickerButton';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 import { Button } from '@/shared/components/ui/button';
@@ -20,7 +23,7 @@ import {
 import { Checkbox, Input, Select } from '@/shared/components/ui/form-controls';
 import { useTableState } from '@/shared/hooks/use-table-state';
 import { PageHeader } from '@/shared/layout/PageHeader';
-import { formatDateTime, todayBusinessDate } from '@/shared/lib/format';
+import { formatBusinessDate, formatDateTime, todayBusinessDate } from '@/shared/lib/format';
 import { listHostels, listMeals } from '@/features/mess-config/api/mess-config-api';
 import { usePermissions } from '@/features/auth/auth-context';
 import { listBookings } from '../api/bookings-api';
@@ -94,28 +97,51 @@ export function BookingsPage() {
         breadcrumbs={[{ label: 'Bookings' }]}
         actions={
           <>
-            <PermissionGate permissions={['bookings:bulk']}>
-              <Button
-                variant="outline"
-                disabled={selected.length === 0}
-                onClick={() => setBulkAction('MOVE')}
-              >
-                Move {selected.length || ''} selected…
-              </Button>
-              <Button
-                variant="outline"
-                disabled={selected.length === 0}
-                onClick={() => setBulkAction('CANCEL')}
-              >
-                Cancel {selected.length || ''} selected…
-              </Button>
-            </PermissionGate>
+            <DatePickerButton
+              value={filters.date}
+              text={formatBusinessDate(filters.date, 'EEE, d MMM yyyy')}
+              label="Date"
+              onChange={(date) => date && setFilter('date', date)}
+            />
             <PermissionGate permissions={['bookings:override', 'students:read']}>
-              <Button onClick={() => setIsCreating(true)}>Book for a student</Button>
+              <Button className="h-11 font-semibold" onClick={() => setIsCreating(true)}>
+                Book for a student
+              </Button>
             </PermissionGate>
           </>
         }
       />
+      <div role="radiogroup" aria-label="Meal" className="mb-4 flex flex-wrap gap-2">
+        <ChoiceChip
+          label="All meals"
+          isSelected={!filters.mealType}
+          onClick={() => (setFilter('mealType', ''), setFilter('slotId', ''))}
+        />
+        {MEAL_TYPE_ORDER.map((meal) => (
+          <ChoiceChip
+            key={meal}
+            label={MEAL_LABELS[meal]}
+            isSelected={filters.mealType === meal}
+            onClick={() => (setFilter('mealType', meal), setFilter('slotId', ''))}
+          />
+        ))}
+      </div>
+      {selected.length > 0 && can('bookings:bulk') ? (
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-md border border-primary bg-mint px-4 py-2.5">
+          <p className="flex-1 basis-40 text-sm font-semibold text-primary">
+            {selected.length} selected
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setBulkAction('MOVE')}>
+            Move {selected.length} selected…
+          </Button>
+          <Button variant="dangerOutline" size="sm" onClick={() => setBulkAction('CANCEL')}>
+            Cancel {selected.length} selected…
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setSelection({})}>
+            Clear
+          </Button>
+        </div>
+      ) : null}
       <DataTable
         caption="Bookings"
         columns={columns}
@@ -136,33 +162,11 @@ export function BookingsPage() {
         toolbar={
           <>
             <Input
-              type="date"
-              aria-label="Date"
-              className="w-40"
-              value={filters.date}
-              onChange={(event) => event.target.value && setFilter('date', event.target.value)}
-            />
-            <Input
               aria-label="Search bookings"
               placeholder="Name or reference number"
               className="w-56"
               onChange={(event) => setFilter('q', event.target.value)}
             />
-            <Select
-              aria-label="Meal"
-              className="w-32"
-              onChange={(event) => (
-                setFilter('mealType', event.target.value as MealType | ''),
-                setFilter('slotId', '')
-              )}
-            >
-              <option value="">All meals</option>
-              {(['BREAKFAST', 'LUNCH', 'DINNER'] as const).map((meal) => (
-                <option key={meal} value={meal}>
-                  {MEAL_LABELS[meal]}
-                </option>
-              ))}
-            </Select>
             <Select
               aria-label="Slot"
               className="w-52"
@@ -273,7 +277,7 @@ function buildColumns(
       enableSorting: true,
       enableHiding: false,
       cell: ({ row }) => (
-        <span className="font-medium">
+        <span className="block text-[13px] font-semibold leading-tight">
           {row.original.studentName}
           <span className="block text-xs font-normal text-muted-foreground">
             {row.original.referenceNumber}
@@ -344,7 +348,7 @@ function buildColumns(
     ...columns,
     {
       id: 'actions',
-      header: 'Actions',
+      header: () => <span className="sr-only">Actions</span>,
       enableHiding: false,
       cell: ({ row }) => <RowMenu booking={row.original} onAction={onAction} />,
     },
@@ -362,8 +366,8 @@ function RowMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" aria-label={`Actions for ${booking.studentName}`}>
-          Actions
+        <Button variant="ghost" size="icon-sm" aria-label={`Actions for ${booking.studentName}`}>
+          <MoreHorizontal aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

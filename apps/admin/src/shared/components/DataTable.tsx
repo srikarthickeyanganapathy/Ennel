@@ -1,3 +1,4 @@
+import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
 import {
   type ColumnDef,
   flexRender,
@@ -138,10 +139,10 @@ export function DataTable<T>(props: DataTableProps<T>) {
       ) : rows.length === 0 ? (
         <EmptyState title={props.emptyTitle ?? 'Nothing to show'} />
       ) : (
-        <div className="relative overflow-x-auto rounded-md border border-border">
+        <div className="relative overflow-x-auto rounded-lg border border-border bg-background">
           <table className="w-full text-left text-sm">
             <caption className="sr-only">{caption}</caption>
-            <thead className="bg-surface">
+            <thead className="bg-neutral-surface">
               {table.getHeaderGroups().map((group) => (
                 <tr key={group.id}>
                   {group.headers.map((header) => {
@@ -158,7 +159,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                               ? 'descending'
                               : undefined
                         }
-                        className="whitespace-nowrap px-3 py-2 font-medium text-muted-foreground"
+                        className="whitespace-nowrap px-3 py-3 text-xs font-semibold text-muted-foreground first:pl-5"
                       >
                         {canSort ? (
                           <button
@@ -167,9 +168,13 @@ export function DataTable<T>(props: DataTableProps<T>) {
                             onClick={header.column.getToggleSortingHandler()}
                           >
                             {flexRender(header.column.columnDef.header, header.getContext())}
-                            <span aria-hidden>
-                              {sortState === 'asc' ? '▲' : sortState === 'desc' ? '▼' : '↕'}
-                            </span>
+                            {sortState === 'asc' ? (
+                              <ChevronUp aria-hidden className="size-3.5" />
+                            ) : sortState === 'desc' ? (
+                              <ChevronDown aria-hidden className="size-3.5" />
+                            ) : (
+                              <ChevronsUpDown aria-hidden className="size-3.5" />
+                            )}
                           </button>
                         ) : (
                           flexRender(header.column.columnDef.header, header.getContext())
@@ -188,7 +193,7 @@ export function DataTable<T>(props: DataTableProps<T>) {
                   data-state={row.getIsSelected() ? 'selected' : undefined}
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-3 py-2 align-top">
+                    <td key={cell.id} className="px-3 py-3 text-[13px] first:pl-5">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </td>
                   ))}

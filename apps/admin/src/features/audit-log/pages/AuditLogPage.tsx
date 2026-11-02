@@ -4,14 +4,16 @@ import { type ColumnDef } from '@tanstack/react-table';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { errorMessage } from '@/shared/api-client/api-error';
+import { ChoiceChip } from '@/shared/components/ChoiceChip';
 import { DataTable, type DataTableColumnMeta } from '@/shared/components/DataTable';
 import { PermissionGate } from '@/shared/components/PermissionGate';
 import { StatusBadge } from '@/shared/components/StatusBadge';
 import { Button } from '@/shared/components/ui/button';
-import { Checkbox, Input } from '@/shared/components/ui/form-controls';
+import { Field, Input } from '@/shared/components/ui/form-controls';
 import { useTableState } from '@/shared/hooks/use-table-state';
 import { PageHeader } from '@/shared/layout/PageHeader';
 import { formatDateTime } from '@/shared/lib/format';
+import { formatRoles } from '@/features/staff/constants/role-labels';
 import { exportAuditLogs, listAuditLogs } from '../api/audit-log-api';
 
 const meta = (value: (row: AuditLogItem) => string): DataTableColumnMeta => ({
@@ -22,7 +24,9 @@ const COLUMNS: ColumnDef<AuditLogItem, unknown>[] = [
   {
     id: 'createdAt',
     header: 'When',
-    cell: ({ row }) => formatDateTime(row.original.createdAt),
+    cell: ({ row }) => (
+      <span className="whitespace-nowrap">{formatDateTime(row.original.createdAt)}</span>
+    ),
     meta: meta((row) => row.createdAt),
   },
   {
@@ -30,9 +34,11 @@ const COLUMNS: ColumnDef<AuditLogItem, unknown>[] = [
     header: 'Who',
     cell: ({ row }) => (
       <span>
-        {row.original.actorName ?? row.original.actorType}
+        <span className="block font-semibold">
+          {row.original.actorName ?? row.original.actorType}
+        </span>
         <span className="block text-xs text-muted-foreground">
-          {row.original.actorRoles.join(', ')}
+          {formatRoles(row.original.actorRoles)}
         </span>
       </span>
     ),
@@ -71,7 +77,7 @@ const COLUMNS: ColumnDef<AuditLogItem, unknown>[] = [
     header: 'Change',
     cell: ({ row }) => (
       <details className="max-w-md text-xs">
-        <summary className="cursor-pointer text-primary">View</summary>
+        <summary className="cursor-pointer font-semibold text-primary">View</summary>
         <pre className="mt-1 whitespace-pre-wrap break-all rounded bg-surface p-2">
           {JSON.stringify({ before: row.original.before, after: row.original.after }, null, 2)}
         </pre>
@@ -165,31 +171,30 @@ export function AuditLogPage() {
               value={filters.entityId}
               onChange={(event) => update('entityId', event.target.value)}
             />
-            <label className="text-sm">
-              From{' '}
+            <Field label="From" htmlFor="audit-from">
               <Input
+                id="audit-from"
                 type="date"
                 className="w-40"
                 value={filters.from}
                 onChange={(event) => update('from', event.target.value)}
               />
-            </label>
-            <label className="text-sm">
-              To{' '}
+            </Field>
+            <Field label="To" htmlFor="audit-to">
               <Input
+                id="audit-to"
                 type="date"
                 className="w-40"
                 value={filters.to}
                 onChange={(event) => update('to', event.target.value)}
               />
-            </label>
-            <label className="flex items-center gap-2 text-sm">
-              <Checkbox
-                checked={filters.isOverride}
-                onChange={(event) => update('isOverride', event.target.checked)}
-              />{' '}
-              Overrides only
-            </label>
+            </Field>
+            <ChoiceChip
+              role="checkbox"
+              label="Overrides only"
+              isSelected={filters.isOverride}
+              onClick={() => update('isOverride', !filters.isOverride)}
+            />
           </>
         }
       />

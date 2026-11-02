@@ -98,8 +98,8 @@ function AppealCard({
           />
           <div className="flex gap-2">
             <Button
-              variant="outline"
-              className="h-12 flex-1 border-[1.5px] border-danger/30 text-danger hover:bg-danger-surface hover:text-danger sm:flex-none"
+              variant="dangerOutline"
+              className="h-12 flex-1 sm:flex-none"
               aria-label={`Reject report from ${fullName}`}
               onClick={() => onAction({ kind: 'reject', event, note })}
             >
