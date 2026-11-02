@@ -64,3 +64,25 @@ export function formatMinuteOfDay(minuteOfDay: number): string {
   const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
   return `${hours12}:${String(minutes).padStart(2, '0')} ${period}`;
 }
+
+const MONTH_NAMES = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/** "Thu 21 May 2026", for exported files. */
+export function formatBusinessDateLabel(date: BusinessDate): string {
+  const [year = '', month = '1', day = '1'] = date.split('-');
+  return `${WEEKDAY_NAMES[getBusinessWeekday(date)]} ${Number(day)} ${MONTH_NAMES[Number(month) - 1]} ${year}`;
+}

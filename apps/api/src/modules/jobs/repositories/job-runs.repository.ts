@@ -59,6 +59,20 @@ export class JobRunsRepository {
     });
   }
 
+  latest(jobName: string) {
+    return this.prisma.jobRun.findFirst({
+      where: { jobName },
+      orderBy: { startedAt: 'desc' },
+      select: { status: true, startedAt: true, finishedAt: true, attempt: true, error: true },
+    });
+  }
+
+  failuresSince(jobName: string, since: Date): Promise<number> {
+    return this.prisma.jobRun.count({
+      where: { jobName, status: 'FAILED', startedAt: { gte: since } },
+    });
+  }
+
   /** Students the nightly generation works for (BR-DEF-1). */
   async listEligibleStudentIds(): Promise<string[]> {
     const rows = await this.prisma.student.findMany({

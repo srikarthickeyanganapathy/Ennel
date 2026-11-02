@@ -11,5 +11,6 @@ import { GetPendingWorkService } from './services/get-pending-work.service';
   imports: [MessConfigModule, SlotsModule],
   controllers: [AdminDashboardController],
   providers: [AdminDashboardRepository, GetDashboardService, GetPendingWorkService],
+  exports: [AdminDashboardRepository],
 })
 export class AdminDashboardModule {}

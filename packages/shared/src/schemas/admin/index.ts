@@ -14,3 +14,6 @@ export * from './leaves.schema.js';
 export * from './no-shows.schema.js';
 export * from './complaints.schema.js';
 export * from './announcements.schema.js';
+export * from './forecast.schema.js';
+export * from './reports.schema.js';
+export * from './system.schema.js';

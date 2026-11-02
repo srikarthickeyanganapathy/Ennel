@@ -19,5 +19,6 @@ import { OutageService } from './services/outage.service';
     OutageService,
     AttendanceImportService,
   ],
+  exports: [AdminAttendanceRepository],
 })
 export class AdminAttendanceModule {}

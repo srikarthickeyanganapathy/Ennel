@@ -215,4 +215,14 @@ Status: Phase 0 defaults approved 2026-10-19. The institution still has to confi
 ## BR-FC: Forecasting (Admin §N)
 
 - **BR-FC-1** Expected plates = booked count × show-up rate. The show-up rate is the rolling average of attended ÷ booked for that meal over the last `forecastLookbackDays` (default **14**) days with data. With fewer than 7 days of history, the forecast is flagged low-confidence and falls back to the available days, or to 1.0 when there are none.
-- **BR-FC-2** "Days with data" are past days with at least one attendance record or no-show for the meal, so a missing attendance feed never reads as 0% show-up. The rate is rounded to 4 decimals; expected plates are rounded up. Used by the admin dashboard now and the kitchen forecast in Phase 11 (`modules/forecasting/domain/show-up-rate.ts`).
+- **BR-FC-2** "Days with data" are past days with at least one attendance record or no-show for the meal, so a missing attendance feed never reads as 0% show-up. The rate is rounded to 4 decimals; expected plates are rounded up. Used by the admin dashboard and the kitchen forecast (`modules/forecasting/domain/show-up-rate.ts`).
+
+## BR-RPT: Forecast and reports (Admin §N, §O, ADR-0029)
+
+- **BR-RPT-1** A forecast meal is locked once its last slot's cancellation deadline has passed. Expected plates round up per slot and diet, then add up for the meal.
+- **BR-RPT-2** Reports count `COMPLETED` as served, `NO_SHOW` as No-shows, `CANCELLED` as cancelled and `BOOKED` as not finished. Meals closed or paused for leave are left out. The No-show rate is No-shows ÷ (served + No-shows), empty without finished meals.
+- **BR-RPT-3** Waste is an estimate in plates: booked on finished meals with nobody attending. Days without attendance data are skipped. Kilograms are not shown, because plate weight and plates cooked are not recorded.
+- **BR-RPT-4** Slot utilization is seats ÷ capacity (BR-CAP-1) over open days, hidden when filtered to one hostel. Over-capacity days are days with an active over-capacity booking in that slot.
+- **BR-RPT-5** Cancellation lead time runs from cancelling to the booked slot's start, and counts as zero if staff cancelled after it started.
+- **BR-RPT-6** One hostel's complaint figures leave out anonymous complaints, which store no hostel (ADR-0008). Leave volume is requests starting in the range and ignores the meal filter.
+- **BR-RPT-7** Reports cover past days and today, up to 366 days. Exports over 31 days run in the background, and only the staff member who asked can download them.

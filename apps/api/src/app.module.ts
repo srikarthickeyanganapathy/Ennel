@@ -26,6 +26,9 @@ import { SlotsModule } from './modules/slots/slots.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { AdminBookingsModule } from './modules/admin/admin-bookings/admin-bookings.module';
 import { AdminDashboardModule } from './modules/admin/admin-dashboard/admin-dashboard.module';
+import { AdminForecastingModule } from './modules/admin/admin-forecasting/admin-forecasting.module';
+import { AdminReportsModule } from './modules/admin/admin-reports/admin-reports.module';
+import { AdminSystemModule } from './modules/admin/admin-system/admin-system.module';
 import { AdminClosuresModule } from './modules/admin/admin-closures/admin-closures.module';
 import { AdminAttendanceModule } from './modules/admin/admin-attendance/admin-attendance.module';
 import { AdminLeavesModule } from './modules/admin/admin-leaves/admin-leaves.module';
@@ -61,6 +64,9 @@ import { StudentsModule } from './modules/students/students.module';
     JobsModule,
     AdminBookingsModule,
     AdminDashboardModule,
+    AdminForecastingModule,
+    AdminReportsModule,
+    AdminSystemModule,
     AdminClosuresModule,
     AdminAttendanceModule,
     AdminLeavesModule,

@@ -229,6 +229,13 @@ enum StaffStatus {
   DISABLED
 }
 
+enum ReportExportStatus {
+  QUEUED
+  RUNNING
+  READY
+  FAILED
+}
+
 enum JobRunStatus {
   RUNNING
   SUCCEEDED
@@ -1021,6 +1028,7 @@ model StaffUser {
   complaintStatusChanges ComplaintStatusHistory[] @relation("ComplaintStatusActor")
   announcements         Announcement[]           @relation("AnnouncementCreatedBy")
   importJobs            ImportJob[]              @relation("ImportJobCreatedBy")
+  reportExports         ReportExport[]
   createdAt             DateTime                 @default(now()) @map("created_at") @db.Timestamptz
   updatedAt             DateTime                 @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -1160,6 +1168,25 @@ model ImportJobRow {
 }
 
 /// System health (Admin §Q) and job idempotency; BullMQ remains the queue of record.
+/// A background export of a long report range (Admin §O). Staff see and download only their own.
+model ReportExport {
+  id            String             @id @default(uuid()) @db.Uuid
+  requestedById String             @map("requested_by_id") @db.Uuid
+  status        ReportExportStatus @default(QUEUED)
+  format        String
+  filters       Json
+  fileKey       String?            @map("file_key")
+  fileName      String             @map("file_name")
+  error         String?
+  createdAt     DateTime           @default(now()) @map("created_at") @db.Timestamptz
+  finishedAt    DateTime?          @map("finished_at") @db.Timestamptz
+  requestedBy   StaffUser          @relation(fields: [requestedById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([requestedById, createdAt])
+  @@map("report_exports")
+}
+
 model JobRun {
   id         String       @id @default(uuid()) @db.Uuid
   jobName    String       @map("job_name")

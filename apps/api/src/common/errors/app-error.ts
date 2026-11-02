@@ -35,5 +35,6 @@ export const ERROR_HTTP_STATUS: Readonly<Record<ErrorCode, number>> = {
   [ErrorCode.ROSTER_IMPORT_INVALID]: 422,
   [ErrorCode.FILE_INVALID]: 422,
   [ErrorCode.RATE_LIMITED]: 429,
+  [ErrorCode.SERVICE_UNAVAILABLE]: 503,
   [ErrorCode.INTERNAL_ERROR]: 500,
 };

@@ -22,6 +22,7 @@ export const ErrorCode = {
   ROSTER_IMPORT_INVALID: 'ROSTER_IMPORT_INVALID',
   FILE_INVALID: 'FILE_INVALID',
   RATE_LIMITED: 'RATE_LIMITED',
+  SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
 } as const;
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
